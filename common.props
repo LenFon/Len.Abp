@@ -1,0 +1,31 @@
+<Project>
+	<Import Project="version.props" />
+	<PropertyGroup>
+		<NoWarn>$(NoWarn);CS1591;CS0436</NoWarn>
+		<Authors>lenfon</Authors>
+		<Description>A commonly used feature library based on abp.</Description>
+		<PackageTags>len;abp</PackageTags>
+		<PackageProjectUrl>https://github.com/LenFon/Len.Abp</PackageProjectUrl>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<RepositoryType>git</RepositoryType>
+		<RepositoryUrl>https://github.com/LenFon/Len.Abp</RepositoryUrl>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<!-- Include symbol files (*.pdb) in the built .nupkg -->
+		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+	</PropertyGroup>
+	
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.SourceLink.GitHub">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="..\..\README.md" Pack="true" PackagePath="\"/>
+	</ItemGroup>
+</Project>

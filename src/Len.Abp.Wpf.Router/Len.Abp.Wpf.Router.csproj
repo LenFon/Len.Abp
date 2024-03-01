@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<Import Project="..\..\common.props" />
+	<Import Project="..\..\configureawait.props" />
+	
+	<PropertyGroup>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<UseWPF>true</UseWPF>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+	
+	<ItemGroup>
+	  <ProjectReference Include="..\Len.Abp.Wpf.Mvvm\Len.Abp.Wpf.Mvvm.csproj" />
+	</ItemGroup>
+
+</Project>

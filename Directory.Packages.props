@@ -1,0 +1,21 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="IndexRange" Version="1.0.3" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
+    <PackageVersion Include="ConfigureAwait.Fody" Version="3.3.2" />
+    <PackageVersion Include="Fody" Version="6.8.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageVersion Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+    <PackageVersion Include="Serilog.Extensions.Logging" Version="8.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Async" Version="1.5.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="5.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageVersion Include="Volo.Abp.Core" Version="8.0.4" />
+    <PackageVersion Include="Volo.Abp.Autofac" Version="8.0.4" />
+  </ItemGroup>
+</Project>
