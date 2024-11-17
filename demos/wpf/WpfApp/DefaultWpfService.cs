@@ -7,6 +7,7 @@ internal class DefaultWpfService : IWpfService
 {
     public void Initialize(Application application)
     {
+
         //other ....
     }
 }
