@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.7.34009.444
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{F5CEB9F8-07EC-408A-BA0A-AC4F6D32BDA9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{AB532C5E-7080-4361-86D6-455BC721F443}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Len.Abp.Core", "src\Len.Abp.Core\Len.Abp.Core.csproj", "{36AF5523-3FD0-452E-B22A-802E95F6F7DF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决方案项", "{4D30C6AB-A300-4A14-BF29-730F54C0F068}"
+	ProjectSection(SolutionItems) = preProject
+		common.props = common.props
+		Directory.Packages.props = Directory.Packages.props
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{36AF5523-3FD0-452E-B22A-802E95F6F7DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36AF5523-3FD0-452E-B22A-802E95F6F7DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36AF5523-3FD0-452E-B22A-802E95F6F7DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36AF5523-3FD0-452E-B22A-802E95F6F7DF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{36AF5523-3FD0-452E-B22A-802E95F6F7DF} = {F5CEB9F8-07EC-408A-BA0A-AC4F6D32BDA9}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CA1BF003-5E91-4AAF-BC95-4D5E6AE11837}
+	EndGlobalSection
+EndGlobal

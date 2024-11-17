@@ -1,0 +1,22 @@
+<Project>
+	<PropertyGroup>
+		<RootNamespace />
+		<LangVersion>latest</LangVersion>
+		<Authors>lenfon</Authors>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<NoWarn>$(NoWarn);CS1591;CS0436</NoWarn>
+		<!-- Include symbol files (*.pdb) in the built .nupkg -->
+		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="ConfigureAwait.Fody" />
+		<PackageReference Include="Microsoft.SourceLink.GitHub">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+</Project>
