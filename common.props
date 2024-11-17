@@ -1,6 +1,9 @@
 <Project>
 	<PropertyGroup>
+		<TargetFrameworks>net8.0</TargetFrameworks>
 		<RootNamespace />
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
 		<LangVersion>latest</LangVersion>
 		<Authors>lenfon</Authors>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>

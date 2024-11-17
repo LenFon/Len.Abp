@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<Import Project="../../common.wpf.props" />
+	<PropertyGroup>
+	</PropertyGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\Len.Abp.Core\Len.Abp.Core.csproj" />
+	</ItemGroup>
+
+</Project>

@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<Import Project="../../common.wpf.props" />
+
+	<ItemGroup>
+	  <PackageReference Include="Volo.Abp.BackgroundWorkers" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\Len.Abp.Wpf.Abstractions\Len.Abp.Wpf.Abstractions.csproj" />
+	</ItemGroup>
+
+</Project>
