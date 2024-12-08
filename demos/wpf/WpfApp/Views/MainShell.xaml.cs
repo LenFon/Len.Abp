@@ -7,7 +7,7 @@ namespace WpfApp.Views;
 /// <summary>
 /// MainShell.xaml 的交互逻辑
 /// </summary>
-[View(typeof(MainShellViewModel))]
+[View(typeof(MainShellViewModel), ViewName = "main")]
 public partial class MainShell : IShell
 {
     public MainShell()

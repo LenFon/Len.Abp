@@ -2,7 +2,7 @@
 
 internal readonly record struct ViewInfo
 {
-    public ViewInfo(ITypeSymbol type, string viewModelFullName, int? lifetimeValue)
+    public ViewInfo(ITypeSymbol type, string viewModelFullName, string? viewName, int? lifetimeValue)
     {
         FullyQualifiedNamespace = type.ContainingNamespace.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         Namespace = FullyQualifiedNamespace["global::".Length..];
@@ -11,6 +11,7 @@ internal readonly record struct ViewInfo
         FullName = type.ToDisplayString();
         ViewModelFullyQualifiedName = $"global::{viewModelFullName}";
 
+        ViewName = viewName;
         // default lifetime value is 1(ServiceLifetime.Scoped)
         LifetimeValue = lifetimeValue ?? 1;
     }
@@ -50,6 +51,8 @@ internal readonly record struct ViewInfo
     /// The fully qualified name of the view model associated with a view.
     /// </summary>
     public string ViewModelFullyQualifiedName { get; }
+
+    public string? ViewName { get; }
 
     /// <summary>
     /// The lifetime value of a view. default is 1(ServiceLifetime.Scoped).

@@ -15,7 +15,8 @@ internal class ViewCodeGenerator
                     namespace {{item.Namespace}};
 
                     #nullable enable
-
+                    {{GetExposeKeyedServices(item)}}
+                    [global::Volo.Abp.DependencyInjection.ExposeServices(typeof({{item.Name}}), typeof(global::Len.Abp.Wpf.Mvvm.IView<{{item.ViewModelFullyQualifiedName}}>), typeof(global::Len.Abp.Wpf.Mvvm.IView<object>))]
                     partial class {{item.Name}} :
                         global::Len.Abp.Wpf.Mvvm.IView<{{item.ViewModelFullyQualifiedName}}>, 
                         global::Volo.Abp.DependencyInjection.{{GetLifetime(item.LifetimeValue)}}
@@ -31,13 +32,28 @@ internal class ViewCodeGenerator
         }
     }
 
+    private static string GetExposeKeyedServices(ViewInfo item)
+    {
+        if (string.IsNullOrWhiteSpace(item.ViewName))
+        {
+            return string.Empty;
+        }
+
+        return $$"""
+
+            [global::Volo.Abp.DependencyInjection.ExposeKeyedService<global::Len.Abp.Wpf.Mvvm.IView<object>>("{{item.ViewName}}")]
+            [global::Volo.Abp.DependencyInjection.ExposeKeyedService<global::Len.Abp.Wpf.Mvvm.IView<{{item.ViewModelFullyQualifiedName}}>>("{{item.ViewName}}")]
+            [global::Volo.Abp.DependencyInjection.ExposeKeyedService<{{item.FullyQualifiedName}}>("{{item.ViewName}}")]
+            """;
+    }
+
     /// <summary>
     /// Gets the lifetime string based on the lifetime value.
     /// </summary>
     ///<param name="lifetimeValue">The lifetime value.</param>
     /// <returns></returns>
     /// <exception cref="ArgumentException"></exception>
-    private string GetLifetime(int lifetimeValue) =>
+    private static string GetLifetime(int lifetimeValue) =>
         lifetimeValue switch
         {
             0 => "ISingletonDependency",

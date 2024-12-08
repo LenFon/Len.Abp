@@ -7,5 +7,7 @@ public class ViewAttribute(Type viewModel) : Attribute
 {
     public Type ViewModel { get; set; } = viewModel;
 
+    public string? ViewName { get; set; }
+
     public ServiceLifetime Lifetime { get; set; } = ServiceLifetime.Scoped;
 }
