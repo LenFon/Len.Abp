@@ -1,4 +1,4 @@
-﻿using Len.Abp.Wpf.Abstractions;
+﻿using Len.Abp.Wpf;
 using System.Windows;
 
 namespace WpfApp;

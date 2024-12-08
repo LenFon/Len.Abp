@@ -1,5 +1,4 @@
 ﻿using System.Windows;
-using Len.Abp.Wpf.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Volo.Abp.DependencyInjection;

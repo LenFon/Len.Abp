@@ -1,6 +1,5 @@
 <Project>
 	<PropertyGroup>
-		<TargetFrameworks>net8.0</TargetFrameworks>
 		<RootNamespace />
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
@@ -16,7 +15,6 @@
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="ConfigureAwait.Fody" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

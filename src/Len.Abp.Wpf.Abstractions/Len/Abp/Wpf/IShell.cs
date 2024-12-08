@@ -1,6 +1,6 @@
 ﻿using Volo.Abp.DependencyInjection;
 
-namespace Len.Abp.Wpf.Abstractions;
+namespace Len.Abp.Wpf;
 
 public interface IShell : ISingletonDependency
 { }

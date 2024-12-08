@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
 	<Import Project="../../common.wpf.props" />
-	<PropertyGroup>
-	</PropertyGroup>
+	<Import Project="../../configureawait.props" />
+
 	<ItemGroup>
-	  <ProjectReference Include="..\Len.Abp.Core\Len.Abp.Core.csproj" />
+		<ProjectReference Include="..\Len.Abp.Core\Len.Abp.Core.csproj" />
+		<ProjectReference Include="..\Len.Abp.Wpf.Generators\Len.Abp.Wpf.Generators.csproj" />
 	</ItemGroup>
 
 </Project>

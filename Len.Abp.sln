@@ -13,20 +13,24 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决�
 	ProjectSection(SolutionItems) = preProject
 		common.props = common.props
 		common.wpf.props = common.wpf.props
+		configureawait.props = configureawait.props
 		Directory.Packages.props = Directory.Packages.props
+		frameworks.props = frameworks.props
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Len.Abp.Wpf.Abstractions", "src\Len.Abp.Wpf.Abstractions\Len.Abp.Wpf.Abstractions.csproj", "{1E4A637D-7EF1-4B32-8ED9-0F8F75DACD79}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Len.Abp.Wpf", "src\Len.Abp.Wpf\Len.Abp.Wpf.csproj", "{37B053DB-EE1E-4277-8E5B-EC509FFDD5E9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Len.Abp.Wpf", "src\Len.Abp.Wpf\Len.Abp.Wpf.csproj", "{37B053DB-EE1E-4277-8E5B-EC509FFDD5E9}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "demos", "demos", "{68BD25B0-D13F-4BD9-AE39-C6466756C54B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "wpf", "wpf", "{8EFD547D-2ADD-4013-8B50-025A693E4575}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WpfApp.Host", "demos\wpf\WpfApp.Host\WpfApp.Host.csproj", "{3806D7B1-AC9F-4FFC-AEEC-8E872B318684}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WpfApp.Host", "demos\wpf\WpfApp.Host\WpfApp.Host.csproj", "{3806D7B1-AC9F-4FFC-AEEC-8E872B318684}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WpfApp", "demos\wpf\WpfApp\WpfApp.csproj", "{D3554B13-BBA2-4E57-A009-DE0FBCFE0A1F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WpfApp", "demos\wpf\WpfApp\WpfApp.csproj", "{D3554B13-BBA2-4E57-A009-DE0FBCFE0A1F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Len.Abp.Wpf.Generators", "src\Len.Abp.Wpf.Generators\Len.Abp.Wpf.Generators.csproj", "{C25461A7-EBEA-475C-824B-114C02FE805B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -54,6 +58,10 @@ Global
 		{D3554B13-BBA2-4E57-A009-DE0FBCFE0A1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D3554B13-BBA2-4E57-A009-DE0FBCFE0A1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D3554B13-BBA2-4E57-A009-DE0FBCFE0A1F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C25461A7-EBEA-475C-824B-114C02FE805B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C25461A7-EBEA-475C-824B-114C02FE805B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C25461A7-EBEA-475C-824B-114C02FE805B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C25461A7-EBEA-475C-824B-114C02FE805B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -65,6 +73,7 @@ Global
 		{8EFD547D-2ADD-4013-8B50-025A693E4575} = {68BD25B0-D13F-4BD9-AE39-C6466756C54B}
 		{3806D7B1-AC9F-4FFC-AEEC-8E872B318684} = {8EFD547D-2ADD-4013-8B50-025A693E4575}
 		{D3554B13-BBA2-4E57-A009-DE0FBCFE0A1F} = {8EFD547D-2ADD-4013-8B50-025A693E4575}
+		{C25461A7-EBEA-475C-824B-114C02FE805B} = {F5CEB9F8-07EC-408A-BA0A-AC4F6D32BDA9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CA1BF003-5E91-4AAF-BC95-4D5E6AE11837}

@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<Import Project="../../common.wpf.props" />
-
+	<Import Project="../../configureawait.props" />
+	
 	<ItemGroup>
 	  <PackageReference Include="Volo.Abp.BackgroundWorkers" />
 	</ItemGroup>

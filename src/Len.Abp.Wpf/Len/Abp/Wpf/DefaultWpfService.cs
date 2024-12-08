@@ -1,19 +1,11 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Packaging;
-using System.Net;
-using System.Reflection;
-using System.Resources;
+﻿using System.Reflection;
 using System.Windows;
-using System.Windows.Navigation;
-using Len.Abp.Wpf.Abstractions;
 using Volo.Abp;
 using Volo.Abp.Modularity;
 
 namespace Len.Abp.Wpf;
 
-public class BasicWpfService(IAbpApplication app) : IWpfService
+public class DefaultWpfService(IAbpApplication app) : IWpfService
 {
     private readonly IAbpApplication _app = app;
 

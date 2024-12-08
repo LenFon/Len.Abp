@@ -1,7 +1,7 @@
 ﻿using System.Windows;
 using Volo.Abp.DependencyInjection;
 
-namespace Len.Abp.Wpf.Abstractions;
+namespace Len.Abp.Wpf;
 
 public interface IWpfService: ISingletonDependency
 {

@@ -1,0 +1,5 @@
+<Project>
+	<ItemGroup Condition="'$(Configuration)' == 'Release'">
+		<PackageReference Include="ConfigureAwait.Fody" PrivateAssets="All" />
+	</ItemGroup>
+</Project>
