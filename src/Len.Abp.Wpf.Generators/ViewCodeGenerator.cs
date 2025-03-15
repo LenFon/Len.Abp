@@ -1,6 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
-using System.Text;
 
 internal class ViewCodeGenerator
 {
