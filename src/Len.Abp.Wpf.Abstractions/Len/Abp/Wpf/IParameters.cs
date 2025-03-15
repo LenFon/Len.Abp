@@ -29,44 +29,46 @@ file class Parameters : IParameters
 
     public Parameters(string? query = null)
     {
-        if (!string.IsNullOrWhiteSpace(query))
-        {
-            int num = query.Length;
-            for (int i = ((query.Length > 0) && (query[0] == '?')) ? 1 : 0; i < num; i++)
-            {
-                int startIndex = i;
-                int num4 = -1;
-                while (i < num)
-                {
-                    char ch = query[i];
-                    if (ch == '=')
-                    {
-                        if (num4 < 0)
-                        {
-                            num4 = i;
-                        }
-                    }
-                    else if (ch == '&')
-                    {
-                        break;
-                    }
-                    i++;
-                }
-                string? key = null;
-                string value;
-                if (num4 >= 0)
-                {
-                    key = query[startIndex..num4];
-                    value = query.Substring(num4 + 1, (i - num4) - 1);
-                }
-                else
-                {
-                    value = query[startIndex..i];
-                }
+        if (query.IsNullOrWhiteSpace())
+            return;
 
-                if (key != null)
-                    Add(Uri.UnescapeDataString(key), Uri.UnescapeDataString(value));
+        var length = query.Length;
+        for (var i = (query[0] == '?') ? 1 : 0; i < length; i++)
+        {
+            var startIndex = i;
+            var endIndex = -1;
+
+            while (i < length)
+            {
+                char ch = query[i];
+                if (ch == '=')
+                {
+                    if (endIndex < 0)
+                    {
+                        endIndex = i;
+                    }
+                }
+                else if (ch == '&')
+                {
+                    break;
+                }
+                i++;
             }
+
+            string? key = null;
+            string value;
+            if (endIndex >= 0)
+            {
+                key = query[startIndex..endIndex];
+                value = query[(endIndex + 1)..((i - endIndex) - 1)];
+            }
+            else
+            {
+                value = query[startIndex..i];
+            }
+
+            if (key != null)
+                Add(Uri.UnescapeDataString(key), Uri.UnescapeDataString(value));
         }
     }
 
@@ -114,8 +116,8 @@ file class Parameters : IParameters
         {
             if (string.Compare(kvp.Key, key, StringComparison.Ordinal) == 0)
             {
-                var success = TryGetValueInternal(kvp, typeof(T), out object? valueAsObject);
-                value = (T?)valueAsObject;
+                var success = TryGetValueInternal(kvp, typeof(T), out object? obj);
+                value = (T?)obj;
                 return success;
             }
         }
