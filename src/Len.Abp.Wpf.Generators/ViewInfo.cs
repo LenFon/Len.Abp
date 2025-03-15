@@ -2,7 +2,7 @@
 
 internal readonly record struct ViewInfo
 {
-    public ViewInfo(ITypeSymbol type, string viewModelFullName, string? viewName, int? lifetimeValue)
+    public ViewInfo(ITypeSymbol type, string viewModelFullName, string? viewName, int? lifetimeValue, bool? isShell)
     {
         FullyQualifiedNamespace = type.ContainingNamespace.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         Namespace = FullyQualifiedNamespace["global::".Length..];
@@ -14,6 +14,7 @@ internal readonly record struct ViewInfo
         ViewName = viewName;
         // default lifetime value is 1(ServiceLifetime.Scoped)
         LifetimeValue = lifetimeValue ?? 1;
+        IsShell = isShell ?? false;
     }
 
     /// <summary>
@@ -58,4 +59,6 @@ internal readonly record struct ViewInfo
     /// The lifetime value of a view. default is 1(ServiceLifetime.Scoped).
     /// </summary>
     public int LifetimeValue { get; }
+
+    public bool IsShell { get; }
 }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
+using System.Text;
 
 internal class ViewCodeGenerator
 {
@@ -16,8 +17,8 @@ internal class ViewCodeGenerator
 
                     #nullable enable
                     {{GetExposeKeyedServices(item)}}
-                    [global::Volo.Abp.DependencyInjection.ExposeServices(typeof({{item.Name}}), typeof(global::Len.Abp.Wpf.Mvvm.IView<{{item.ViewModelFullyQualifiedName}}>), typeof(global::Len.Abp.Wpf.Mvvm.IView<object>))]
-                    partial class {{item.Name}} :
+                    [global::Volo.Abp.DependencyInjection.ExposeServices({{(item.IsShell ? "typeof(global::Len.Abp.Wpf.IShell)," : "")}}typeof({{item.Name}}), typeof(global::Len.Abp.Wpf.Mvvm.IView<{{item.ViewModelFullyQualifiedName}}>), typeof(global::Len.Abp.Wpf.Mvvm.IView<object>))]
+                    partial class {{item.Name}} : {{(item.IsShell ? "global::Len.Abp.Wpf.IShell," : "")}}
                         global::Len.Abp.Wpf.Mvvm.IView<{{item.ViewModelFullyQualifiedName}}>, 
                         global::Volo.Abp.DependencyInjection.{{GetLifetime(item.LifetimeValue)}}
                     {
