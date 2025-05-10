@@ -32,6 +32,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WpfApp", "demos\wpf\WpfApp\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Len.Abp.Wpf.Generators", "src\Len.Abp.Wpf.Generators\Len.Abp.Wpf.Generators.csproj", "{C25461A7-EBEA-475C-824B-114C02FE805B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Len.Abp.Analyzer", "src\Len.Abp.Analyzer\Len.Abp.Analyzer.csproj", "{B72707F9-BBCF-5D93-7A44-7C2CB543D240}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -62,6 +64,10 @@ Global
 		{C25461A7-EBEA-475C-824B-114C02FE805B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C25461A7-EBEA-475C-824B-114C02FE805B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C25461A7-EBEA-475C-824B-114C02FE805B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B72707F9-BBCF-5D93-7A44-7C2CB543D240}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B72707F9-BBCF-5D93-7A44-7C2CB543D240}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B72707F9-BBCF-5D93-7A44-7C2CB543D240}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B72707F9-BBCF-5D93-7A44-7C2CB543D240}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -74,6 +80,7 @@ Global
 		{3806D7B1-AC9F-4FFC-AEEC-8E872B318684} = {8EFD547D-2ADD-4013-8B50-025A693E4575}
 		{D3554B13-BBA2-4E57-A009-DE0FBCFE0A1F} = {8EFD547D-2ADD-4013-8B50-025A693E4575}
 		{C25461A7-EBEA-475C-824B-114C02FE805B} = {F5CEB9F8-07EC-408A-BA0A-AC4F6D32BDA9}
+		{B72707F9-BBCF-5D93-7A44-7C2CB543D240} = {F5CEB9F8-07EC-408A-BA0A-AC4F6D32BDA9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CA1BF003-5E91-4AAF-BC95-4D5E6AE11837}
