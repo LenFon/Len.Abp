@@ -1,40 +1,33 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using System.Collections.Immutable;
+using System.Text;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.Text;
 
 [Generator]
 internal class EnumResolverGenerator : IIncrementalGenerator
 {
-    private static readonly string _version = System
-        .Reflection.Assembly.GetExecutingAssembly()
-        .GetName()
-        .Version.ToString(3);
+    private static readonly string _version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString(3);
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var allEnums = context.SyntaxProvider
-             .CreateSyntaxProvider(
-                 predicate: static (s, _) => s is EnumDeclarationSyntax,
-                 transform: static (ctx, _) =>
-                 {
-                     var model = ctx.SemanticModel;
-                     return (model.GetDeclaredSymbol(ctx.Node) as INamedTypeSymbol)!;
-                 })
-             .Where(symbol => symbol is not null && symbol.TypeKind == TypeKind.Enum)
-             .Collect();
-
-        var enumDeclarations = context.SyntaxProvider
-            .CreateSyntaxProvider(
+        var allEnums = context
+            .SyntaxProvider.CreateSyntaxProvider(
                 predicate: static (s, _) => s is EnumDeclarationSyntax,
-                transform: static (ctx, _) =>
-                {
-                    var model = ctx.SemanticModel;
-                    return (model.GetDeclaredSymbol(ctx.Node) as INamedTypeSymbol)!;
-                })
-            .Where(symbol => symbol is not null && symbol.TypeKind == TypeKind.Enum);
+                transform: static (ctx, _) => (ctx.SemanticModel.GetDeclaredSymbol(ctx.Node) as INamedTypeSymbol)!
+            )
+            .Where(symbol => symbol is not null && symbol.TypeKind == TypeKind.Enum)
+            .Collect();
 
-        context.RegisterSourceOutput(enumDeclarations, GenerateEnumResolver);
+        context.RegisterSourceOutput(allEnums, GenerateAllEnumResolver);
+    }
+
+    private void GenerateAllEnumResolver(SourceProductionContext context, ImmutableArray<INamedTypeSymbol> enumSymbols)
+    {
+        foreach (var enumSymbol in enumSymbols)
+        {
+            GenerateEnumResolver(context, enumSymbol);
+        }
     }
 
     private void GenerateEnumResolver(SourceProductionContext context, INamedTypeSymbol enumSymbol)
@@ -42,7 +35,8 @@ internal class EnumResolverGenerator : IIncrementalGenerator
         var enumName = enumSymbol.Name;
         var ns = enumSymbol.ContainingNamespace.ToDisplayString();
 
-        var fields = enumSymbol.GetMembers()
+        var fields = enumSymbol
+            .GetMembers()
             .OfType<IFieldSymbol>()
             .Where(w => w.HasConstantValue)
             .Select(s => (s.Name, GetDescription(s)))
@@ -88,8 +82,7 @@ internal class EnumResolverGenerator : IIncrementalGenerator
     private static string GetDescription(IFieldSymbol f)
     {
         var attr = f.GetAttributes()
-            .FirstOrDefault(attr =>
-                attr.AttributeClass?.ToDisplayString() is "System.ComponentModel.DescriptionAttribute");
+            .FirstOrDefault(attr => attr.AttributeClass?.ToDisplayString() is "System.ComponentModel.DescriptionAttribute");
 
         if (attr is not null)
         {
@@ -97,8 +90,7 @@ internal class EnumResolverGenerator : IIncrementalGenerator
         }
 
         attr = f.GetAttributes()
-            .FirstOrDefault(attr =>
-                attr.AttributeClass?.ToDisplayString() is "System.ComponentModel.DataAnnotations.DisplayAttribute");
+            .FirstOrDefault(attr => attr.AttributeClass?.ToDisplayString() is "System.ComponentModel.DataAnnotations.DisplayAttribute");
 
         if (attr is not null)
         {
