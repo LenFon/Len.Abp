@@ -1,11 +1,10 @@
-﻿using Serilog.Events;
-using Serilog;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Volo.Abp;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using WpfApp;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Events;
+using Volo.Abp;
 using WpfApp.Host;
 
 Log.Logger = new LoggerConfiguration()
@@ -21,7 +20,6 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Async(c => c.Console())
     .CreateLogger();
 
-
 try
 {
     Log.Information("Starting wpf host.");
@@ -36,7 +34,7 @@ try
     await builder.Services.AddApplicationAsync<WpfAppHostModule>();
 
     var host = builder.Build();
-
+    var a = host.Services.GetHashCode();
     await host.InitializeAsync();
 
     await host.RunAsync();

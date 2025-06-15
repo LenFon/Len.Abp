@@ -5,7 +5,7 @@ namespace Len.Abp.Core;
 
 public static class EnumHelper
 {
-    private static IServiceScope? _scope;
+    internal static IServiceProvider ServiceProvider { get; set; } = default!;
 
     /// <summary>
     /// Get the name and value of the enum
@@ -13,24 +13,8 @@ public static class EnumHelper
     /// <returns></returns>
     public static IEnumerable<NameValue<TEnum>> GetNameValues<TEnum>() where TEnum : Enum
     {
-        if (_scope == null)
-        {
-            throw new InvalidOperationException("Service provider has not been set. Please call SetServiceProvider first.");
-        }
-
-        var resolver = _scope.ServiceProvider.GetRequiredService<IEnumResolver<TEnum>>();
+        var resolver = ServiceProvider.GetRequiredService<IEnumResolver<TEnum>>();
 
         return resolver.GetNameValues();
-    }
-
-    internal static void CloseServiceProvider()
-    {
-        _scope?.Dispose();
-        _scope = null;
-    }
-
-    internal static void SetServiceProvider(IServiceProvider serviceProvider)
-    {
-        _scope = serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope();
     }
 }
