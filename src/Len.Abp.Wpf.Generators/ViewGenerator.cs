@@ -60,10 +60,9 @@ internal class ViewGenerator : IIncrementalGenerator
 
             var viewModelArg = viewAttribute.ConstructorArguments.First();
             var viewNameArg = viewAttribute.NamedArguments.FirstOrDefault(w => w.Key == "ViewName");
-            var lifetimeArg = viewAttribute.NamedArguments.FirstOrDefault(w => w.Key == "Lifetime");
             var isShellArg = viewAttribute.NamedArguments.FirstOrDefault(w => w.Key == "IsShell");
 
-            return new(symbol, viewModelArg.Value!.ToString(), viewNameArg.Value.Value?.ToString(), (int?)lifetimeArg.Value.Value, (bool?)isShellArg.Value.Value);
+            return new(symbol, viewModelArg.Value!.ToString(), viewNameArg.Value.Value?.ToString(), (bool?)isShellArg.Value.Value);
         }
 
         return default;

@@ -2,11 +2,13 @@
 
 public interface IView
 {
-    object DataContext { get; }
+    object ViewModel { get; }
+
+    string ViewName { get; }
 }
 
 public interface IView<out TViewModel> : IView
     where TViewModel : class
 {
-    TViewModel ViewModel { get; }
+    new TViewModel ViewModel { get; }
 }

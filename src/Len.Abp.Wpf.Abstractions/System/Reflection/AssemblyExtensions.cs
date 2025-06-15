@@ -6,20 +6,6 @@ namespace System.Reflection;
 
 public static class AssemblyExtensions
 {
-    public static bool IsWpfAssembly(this Assembly assembly)
-    {
-        Check.NotNull(assembly, nameof(assembly));
-
-        // WPF 核心程序集
-        string[] wpfAssemblies = ["PresentationFramework", "WindowsBase", "PresentationCore"];
-
-        // 获取该 DLL 引用的所有程序集
-        var referencedAssemblies = assembly.GetReferencedAssemblies();
-
-        // 检查是否引用了 WPF 相关程序集
-        return referencedAssemblies.Any(r => wpfAssemblies.Contains(r.Name));
-    }
-
     public static bool ExistsResource(this Assembly assembly, string resourceName)
     {
         Check.NotNull(assembly, nameof(assembly));
@@ -40,6 +26,20 @@ public static class AssemblyExtensions
 
         using var reader = new ResourceReader(stream);
 
-        return reader.Cast<DictionaryEntry>().Select(s => s.Key).ToArray();
+        return [.. reader.Cast<DictionaryEntry>().Select(s => s.Key)];
+    }
+
+    public static bool IsWpfAssembly(this Assembly assembly)
+    {
+        Check.NotNull(assembly, nameof(assembly));
+
+        // WPF 核心程序集
+        string[] wpfAssemblies = ["PresentationFramework", "WindowsBase", "PresentationCore"];
+
+        // 获取该 DLL 引用的所有程序集
+        var referencedAssemblies = assembly.GetReferencedAssemblies();
+
+        // 检查是否引用了 WPF 相关程序集
+        return referencedAssemblies.Any(r => wpfAssemblies.Contains(r.Name));
     }
 }

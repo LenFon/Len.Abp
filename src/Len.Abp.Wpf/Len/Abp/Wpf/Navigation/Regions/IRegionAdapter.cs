@@ -2,5 +2,5 @@
 
 public interface IRegionAdapter
 {
-    IRegion Initialize(object regionTarget, string regionName);
+    IRegion Initialize(object regionTarget, string regionName, string viewName);
 }

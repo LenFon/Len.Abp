@@ -34,7 +34,7 @@ try
     await builder.Services.AddApplicationAsync<WpfAppHostModule>();
 
     var host = builder.Build();
-    var a = host.Services.GetHashCode();
+
     await host.InitializeAsync();
 
     await host.RunAsync();

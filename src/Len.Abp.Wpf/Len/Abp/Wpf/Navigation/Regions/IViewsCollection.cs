@@ -1,8 +1,9 @@
-﻿using System.Collections.Specialized;
+﻿using Len.Abp.Wpf.Mvvm;
+using System.Collections.Specialized;
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
-public interface IViewsCollection : IEnumerable<object>, INotifyCollectionChanged
+public interface IViewsCollection : IEnumerable<IView>, INotifyCollectionChanged
 {
-    bool Contains(object value);
+    bool Contains(IView value);
 }

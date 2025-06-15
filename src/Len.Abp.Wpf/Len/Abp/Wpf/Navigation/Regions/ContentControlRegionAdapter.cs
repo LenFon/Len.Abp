@@ -1,10 +1,13 @@
 ﻿using Len.Abp.Wpf.Extensions;
+using Len.Abp.Wpf.Mvvm;
 using System.Collections.Specialized;
 using System.Windows.Controls;
+using Volo.Abp.DependencyInjection;
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
-internal class ContentControlRegionAdapter : BasicRegionAdapter<ContentControl>
+[ExposeKeyedService<IRegionAdapter>(typeof(ContentControl))]
+internal class ContentControlRegionAdapter : BasicRegionAdapter<ContentControl>, ISingletonDependency
 {
     protected override void Adapt(IRegion region, ContentControl regionTarget)
     {
@@ -25,12 +28,12 @@ internal class ContentControlRegionAdapter : BasicRegionAdapter<ContentControl>
 
         region.Views.CollectionChanged += (s, e) =>
         {
-            if (e.Action == NotifyCollectionChangedAction.Add && region.ActiveViews.Count() == 0)
+            if (e.Action == NotifyCollectionChangedAction.Add && !region.ActiveViews.Any())
             {
-                region.Activate(e.NewItems[0]);
+                region.Activate((IView)e.NewItems![0]!);
             }
         };
     }
 
-    protected override IRegion CreateRegion() => new SingleActiveRegion();
+    protected override IRegion CreateRegion(string viewName) => new SingleActiveRegion(viewName);
 }

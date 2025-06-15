@@ -1,21 +1,20 @@
-﻿using System.Collections.ObjectModel;
+﻿using Len.Abp.Wpf.Mvvm;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Reflection;
-using System.Windows;
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
 public class Region : IRegion
 {
+    private readonly ObservableCollection<ItemMetadata> _itemMetadataCollection = [];
     private ViewsCollection? _activeViews;
-    private ObservableCollection<ItemMetadata> _itemMetadataCollection = [];
     private string _name = default!;
-    private Comparison<object?> _sort;
     private ViewsCollection? _views;
 
-    public Region()
+    public Region(string viewName)
     {
-        _sort = DefaultSortComparison;
+        Behaviors = new RegionBehaviorCollection(this);
+        ViewName = viewName;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -24,10 +23,12 @@ public class Region : IRegion
     {
         get
         {
-            _views ??= new(_itemMetadataCollection, x => true) { SortComparison = _sort };
-            return _activeViews ??= new(_itemMetadataCollection, x => x.IsActive) { SortComparison = _sort };
+            _views ??= new(_itemMetadataCollection, x => true);
+            return _activeViews ??= new(_itemMetadataCollection, x => x.IsActive);
         }
     }
+
+    public IRegionBehaviorCollection Behaviors { get; }
 
     public string Name
     {
@@ -49,28 +50,11 @@ public class Region : IRegion
         }
     }
 
-    public Comparison<object?> SortComparison
-    {
-        get => _sort;
-        set
-        {
-            _sort = value;
+    public string ViewName { get; }
 
-            if (_activeViews is not null)
-            {
-                _activeViews.SortComparison = _sort;
-            }
+    public IViewsCollection Views => _views ??= new(_itemMetadataCollection, x => true);
 
-            if (_views is not null)
-            {
-                _views.SortComparison = _sort;
-            }
-        }
-    }
-
-    public IViewsCollection Views => _views ??= new(_itemMetadataCollection, x => true) { SortComparison = _sort };
-
-    public void Activate(object view)
+    public virtual void Activate(IView view)
     {
         var itemMetadata = GetItemMetadataOrThrow(view);
 
@@ -80,9 +64,9 @@ public class Region : IRegion
         }
     }
 
-    public void Add(object view) => InternalAdd(view, null);
+    public void Add(IView view) => InternalAdd(view, null);
 
-    public void Add(object view, string viewName)
+    public void Add(IView view, string viewName)
     {
         if (viewName.IsNullOrEmpty())
         {
@@ -92,7 +76,7 @@ public class Region : IRegion
         InternalAdd(view, viewName);
     }
 
-    public void Deactivate(object view)
+    public virtual void Deactivate(IView view)
     {
         var itemMetadata = GetItemMetadataOrThrow(view);
 
@@ -102,19 +86,19 @@ public class Region : IRegion
         }
     }
 
-    public object? GetView(string viewName)
+    public IView? GetView(string viewName)
     {
         if (viewName.IsNullOrEmpty())
         {
             throw new ArgumentException("View name cannot be null or empty.", nameof(viewName));
         }
 
-        var metadata = _itemMetadataCollection.FirstOrDefault(x => x.Name == viewName);
+        var metadata = _itemMetadataCollection.FirstOrDefault(x => x.Item.ViewName == viewName);
 
         return metadata?.Item;
     }
 
-    public void Remove(object view)
+    public void Remove(IView view)
     {
         ItemMetadata itemMetadata = GetItemMetadataOrThrow(view);
 
@@ -129,39 +113,7 @@ public class Region : IRegion
         }
     }
 
-    private static int ViewSortHintAttributeComparison(ViewSortHintAttribute? x, ViewSortHintAttribute? y)
-    {
-        if (x == null)
-        {
-            return y == null ? 0 : -1;
-        }
-        else
-        {
-            return y == null ? 1 : string.Compare(x.Hint, y.Hint, StringComparison.Ordinal);
-        }
-    }
-
-    private int DefaultSortComparison(object? x, object? y)
-    {
-        if (x is null)
-        {
-            return y is null ? 0 : -1;
-        }
-        else
-        {
-            if (y is null)
-            {
-                return 1;
-            }
-
-            var xAttribute = x.GetType().GetCustomAttribute<ViewSortHintAttribute>(true);
-            var yAttribute = y.GetType().GetCustomAttribute<ViewSortHintAttribute>(true);
-
-            return ViewSortHintAttributeComparison(xAttribute, yAttribute);
-        }
-    }
-
-    private ItemMetadata GetItemMetadataOrThrow(object view)
+    private ItemMetadata GetItemMetadataOrThrow(IView view)
     {
         ArgumentNullException.ThrowIfNull(view, nameof(view));
         var itemMetadata =
@@ -170,7 +122,7 @@ public class Region : IRegion
         return itemMetadata;
     }
 
-    private void InternalAdd(object view, string? viewName)
+    private void InternalAdd(IView view, string? viewName)
     {
         if (_itemMetadataCollection.Any(x => x.Item == view))
         {
@@ -178,16 +130,6 @@ public class Region : IRegion
         }
 
         var itemMetadata = new ItemMetadata(view);
-
-        if (!viewName.IsNullOrEmpty())
-        {
-            if (_itemMetadataCollection.Any(x => x.Name == viewName))
-            {
-                throw new ArgumentException($"A view with the name '{viewName}' already exists in the region.");
-            }
-
-            itemMetadata.Name = viewName;
-        }
 
         _itemMetadataCollection.Add(itemMetadata);
     }
@@ -197,34 +139,19 @@ public class Region : IRegion
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    public class ItemMetadata(object item) : DependencyObject
+    public class ItemMetadata(IView item)
     {
-        public static readonly DependencyProperty IsActiveProperty = DependencyProperty.Register(
-            "IsActive",
-            typeof(bool),
-            typeof(ItemMetadata),
-            new PropertyMetadata(false, OnIsActiveChanged)
-        );
+        private bool _isActive;
 
         public event EventHandler? MetadataChanged;
 
         public bool IsActive
         {
-            get { return (bool)GetValue(IsActiveProperty); }
-            set { SetValue(IsActiveProperty, value); }
+            get { return _isActive; }
+            set { _isActive = value; InvokeMetadataChanged(); }
         }
 
-        public object Item { get; } = item;
-
-        public string? Name { get; set; }
-
-        private static void OnIsActiveChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            if (d is ItemMetadata { } itemMetadata)
-            {
-                itemMetadata.InvokeMetadataChanged();
-            }
-        }
+        public IView Item { get; } = item;
 
         private void InvokeMetadataChanged()
         {

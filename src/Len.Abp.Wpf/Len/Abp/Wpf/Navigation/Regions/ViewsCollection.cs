@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using Len.Abp.Wpf.Mvvm;
+using System.Collections;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using static Len.Abp.Wpf.Navigation.Regions.Region;
@@ -10,8 +11,7 @@ public class ViewsCollection : IViewsCollection
     private readonly Predicate<ItemMetadata> _filter;
     private readonly ObservableCollection<ItemMetadata> _items;
     private readonly Dictionary<ItemMetadata, MonitorInfo> _monitoredItems = [];
-    private List<object> _filteredItems = [];
-    private Comparison<object?>? _sort;
+    private List<IView> _filteredItems = [];
 
     public ViewsCollection(ObservableCollection<ItemMetadata> items, Predicate<ItemMetadata> filter)
     {
@@ -23,23 +23,9 @@ public class ViewsCollection : IViewsCollection
 
     public event NotifyCollectionChangedEventHandler? CollectionChanged;
 
-    public Comparison<object?>? SortComparison
-    {
-        get { return _sort; }
-        set
-        {
-            if (_sort != value)
-            {
-                _sort = value;
-                UpdateFilteredItemsList();
-                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-            }
-        }
-    }
+    public bool Contains(IView value) => _filteredItems.Contains(value);
 
-    public bool Contains(object value) => _filteredItems.Contains(value);
-
-    public IEnumerator<object> GetEnumerator() => _filteredItems.GetEnumerator();
+    public IEnumerator<IView> GetEnumerator() => _filteredItems.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
@@ -57,7 +43,7 @@ public class ViewsCollection : IViewsCollection
         }
     }
 
-    private void NotifyAdd(object item)
+    private void NotifyAdd(IView item)
     {
         var newIndex = _filteredItems.IndexOf(item);
 
@@ -107,11 +93,6 @@ public class ViewsCollection : IViewsCollection
                     {
                         NotifyAdd(itemMetadata.Item);
                     }
-                }
-
-                if (_sort != null)
-                {
-                    NotifyReset();
                 }
                 break;
 
@@ -170,7 +151,7 @@ public class ViewsCollection : IViewsCollection
         _monitoredItems.Clear();
     }
 
-    private void RemoveFromFilteredList(object item)
+    private void RemoveFromFilteredList(IView item)
     {
         var index = _filteredItems.IndexOf(item);
         UpdateFilteredItemsList();
@@ -190,25 +171,10 @@ public class ViewsCollection : IViewsCollection
     }
 
     private void UpdateFilteredItemsList() =>
-        _filteredItems = [.. _items.Where(w => _filter(w)).Select(s => s.Item).OrderBy(o => o, new RegionItemComparer(SortComparison))];
+        _filteredItems = [.. _items.Where(w => _filter(w)).Select(s => s.Item).OrderBy(o => o.ViewName)];
 
     private class MonitorInfo
     {
         public bool IsInList { get; set; }
-    }
-
-    private class RegionItemComparer(Comparison<object?>? comparer) : Comparer<object>
-    {
-        private readonly Comparison<object?>? _comparer = comparer;
-
-        public override int Compare(object? x, object? y)
-        {
-            if (_comparer == null)
-            {
-                return 0;
-            }
-
-            return _comparer(x, y);
-        }
     }
 }

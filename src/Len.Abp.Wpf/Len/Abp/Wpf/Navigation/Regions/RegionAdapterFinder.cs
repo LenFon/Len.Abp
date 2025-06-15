@@ -1,8 +1,11 @@
-﻿namespace Len.Abp.Wpf.Navigation.Regions;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Volo.Abp.DependencyInjection;
 
-internal class RegionAdapterFinder : IRegionAdapterFinder
+namespace Len.Abp.Wpf.Navigation.Regions;
+
+internal class RegionAdapterFinder(IAbpLazyServiceProvider abpLazyServiceProvider) : IRegionAdapterFinder
 {
-    private readonly Dictionary<Type, IRegionAdapter> _mappings = [];
+    private readonly IAbpLazyServiceProvider _abpLazyServiceProvider = abpLazyServiceProvider;
 
     public IRegionAdapter FindByControlType(Type controlType)
     {
@@ -10,9 +13,10 @@ internal class RegionAdapterFinder : IRegionAdapterFinder
 
         while (currentType != null)
         {
-            if (_mappings.TryGetValue(currentType, out var value))
+            var regionAdapter = _abpLazyServiceProvider.GetRequiredKeyedService<IRegionAdapter>(currentType);
+            if (regionAdapter is not null)
             {
-                return value;
+                return regionAdapter;
             }
 
             currentType = currentType.BaseType;

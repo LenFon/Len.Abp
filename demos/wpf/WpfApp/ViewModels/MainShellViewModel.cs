@@ -1,6 +1,8 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Len.Abp.Core;
+using Len.Abp.Wpf;
+using Len.Abp.Wpf.Navigation;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using Volo.Abp.DependencyInjection;
@@ -28,11 +30,22 @@ public partial class MainShellViewModel : ObservableObject, IScopedDependency
 
     public IAbpLazyServiceProvider LazyServiceProvider { get; set; } = default!;
 
+    protected INavigationService NavigationService => LazyServiceProvider.LazyGetRequiredService<INavigationService>();
+
     [RelayCommand]
-    private void ChangeTitle()
+    private async Task ChangeTitleAsync()
     {
         var items = EnumHelper.GetNameValues<Status>();
         Title = _state ? "Main Shell" : "Main Shell Window";
         _state = !_state;
+
+        if (_state)
+        {
+            await NavigationService.NavigateAsync("MainRegion", "demo", IParameters.Create());
+        }
+        else
+        {
+            await NavigationService.NavigateAsync("MainRegion", "demo2", IParameters.Create());
+        }
     }
 }

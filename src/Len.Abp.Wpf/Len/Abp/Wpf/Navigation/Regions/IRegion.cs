@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using Len.Abp.Wpf.Mvvm;
+using System.ComponentModel;
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
@@ -6,23 +7,25 @@ public interface IRegion : INotifyPropertyChanged
 {
     IViewsCollection ActiveViews { get; }
 
-    string Name { get; set; }
+    IRegionBehaviorCollection Behaviors { get; }
 
-    Comparison<object?> SortComparison { get; set; }
+    string Name { get; internal set; }
+
+    string ViewName { get; }
 
     IViewsCollection Views { get; }
 
-    void Activate(object view);
+    void Activate(IView view);
 
-    void Add(object view);
+    void Add(IView view);
 
-    void Add(object view, string viewName);
+    void Add(IView view, string viewName);
 
-    void Deactivate(object view);
+    void Deactivate(IView view);
 
-    object? GetView(string viewName);
+    IView? GetView(string viewName);
 
-    void Remove(object view);
+    void Remove(IView view);
 
     void RemoveAll();
 }

@@ -1,11 +1,11 @@
 ﻿<controls:MetroWindow
     x:Class="WpfApp.Views.MainShell"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:len="http://github.com/lenfon"
     xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:len="http://www.lenfon.com"
     xmlns:viewmodels="clr-namespace:WpfApp.ViewModels"
     Title="{Binding Title}"
     Width="800"
@@ -24,7 +24,7 @@
         </Grid.RowDefinitions>
         <StackPanel Orientation="Horizontal">
             <TextBlock Margin="0,0,0,30" Text="{Binding Title}" />
-            <Button Command="{Binding ChangeTitleCommand}" Content="Test Button" />
+            <Button  Command="{Binding ChangeTitleCommand}" Content="Test Button" />
         </StackPanel>
         <ContentControl Grid.Row="1" len:Navigation.RegionName="MainRegion" />
     </Grid>

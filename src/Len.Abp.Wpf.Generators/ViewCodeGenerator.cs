@@ -19,12 +19,22 @@ internal class ViewCodeGenerator
                     [global::Volo.Abp.DependencyInjection.ExposeServices({{(item.IsShell ? "typeof(global::Len.Abp.Wpf.IShell)," : "")}}typeof({{item.Name}}), typeof(global::Len.Abp.Wpf.Mvvm.IView<{{item.ViewModelFullyQualifiedName}}>), typeof(global::Len.Abp.Wpf.Mvvm.IView<object>))]
                     partial class {{item.Name}} : {{(item.IsShell ? "global::Len.Abp.Wpf.IShell," : "")}}
                         global::Len.Abp.Wpf.Mvvm.IView<{{item.ViewModelFullyQualifiedName}}>, 
-                        global::Volo.Abp.DependencyInjection.{{GetLifetime(item.LifetimeValue)}}
+                        global::Volo.Abp.DependencyInjection.ITransientDependency
                     {
                         ///<inheritdoc/>
                         [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
                         [global::System.CodeDom.Compiler.GeneratedCodeAttribute("{{nameof(ViewCodeGenerator)}}", "{{version}}")]
                         public required {{item.ViewModelFullyQualifiedName}} ViewModel { get => ({{item.ViewModelFullyQualifiedName}})DataContext; init => DataContext = value; }
+                    
+                        ///<inheritdoc/>
+                        [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+                        [global::System.CodeDom.Compiler.GeneratedCodeAttribute("{{nameof(ViewCodeGenerator)}}", "{{version}}")]
+                        object Len.Abp.Wpf.Mvvm.IView.ViewModel => ViewModel;
+
+                        ///<inheritdoc/>
+                        [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+                        [global::System.CodeDom.Compiler.GeneratedCodeAttribute("{{nameof(ViewCodeGenerator)}}", "{{version}}")]
+                        public string ViewName => "{{item.ViewName}}";
                     }
                     """;
 
@@ -41,24 +51,9 @@ internal class ViewCodeGenerator
 
         return $$"""
 
-            [global::Volo.Abp.DependencyInjection.ExposeKeyedService<global::Len.Abp.Wpf.Mvvm.IView<object>>("{{item.ViewName}}")]
+            [global::Volo.Abp.DependencyInjection.ExposeKeyedService<global::Len.Abp.Wpf.Mvvm.IView>("{{item.ViewName}}")]
             [global::Volo.Abp.DependencyInjection.ExposeKeyedService<global::Len.Abp.Wpf.Mvvm.IView<{{item.ViewModelFullyQualifiedName}}>>("{{item.ViewName}}")]
             [global::Volo.Abp.DependencyInjection.ExposeKeyedService<{{item.FullyQualifiedName}}>("{{item.ViewName}}")]
             """;
     }
-
-    /// <summary>
-    /// Gets the lifetime string based on the lifetime value.
-    /// </summary>
-    ///<param name="lifetimeValue">The lifetime value.</param>
-    /// <returns></returns>
-    /// <exception cref="ArgumentException"></exception>
-    private static string GetLifetime(int lifetimeValue) =>
-        lifetimeValue switch
-        {
-            0 => "ISingletonDependency",
-            1 => "IScopedDependency",
-            2 => "ITransientDependency",
-            _ => throw new ArgumentException("Invalid lifetime value")
-        };
 }

@@ -1,4 +1,4 @@
-﻿using Len.Abp.Wpf.Navigation.Regions.Behaviors;
+﻿using Len.Abp.Wpf.Navigation.Regions;
 using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.Windows;
@@ -28,10 +28,9 @@ public class Navigation
 
     private static void CreateRegion(DependencyObject element)
     {
-        var regionCreationBehavior = ServiceProvider.GetRequiredService<IDelayedRegionCreationBehavior>();
+        var builder = ServiceProvider.GetRequiredService<IRegionBulider>();
 
-        regionCreationBehavior.TargetElement = element;
-        regionCreationBehavior.Attach();
+        builder.Bulid(element);
     }
 
     private static void OnRegionNameChanged(DependencyObject element, DependencyPropertyChangedEventArgs e)

@@ -1,27 +1,39 @@
-﻿using System.Windows;
+﻿using Len.Abp.Wpf.Mvvm;
+using System.Windows;
+using System.Windows.Media;
 
-namespace Len.Abp.Wpf.Navigation.Regions.Behaviors;
+namespace Len.Abp.Wpf.Navigation.Regions;
 
-internal class DelayedRegionCreationBehavior(IRegionAdapterFinder regionAdapterFinder) : IDelayedRegionCreationBehavior
+internal class RegionBulider(IRegionAdapterFinder regionAdapterFinder) : IRegionBulider
 {
     private readonly IRegionAdapterFinder _regionAdapterFinder = regionAdapterFinder;
     private WeakReference? _elementWeakReference;
     private bool _regionCreated;
 
-    public DependencyObject? TargetElement
-    {
-        get => _elementWeakReference is not null ? _elementWeakReference.Target as DependencyObject : null;
-        set => _elementWeakReference = new WeakReference(value);
-    }
+    private DependencyObject? TargetElement => _elementWeakReference is not null ? _elementWeakReference.Target as DependencyObject : null;
 
-    public void Attach()
+    public void Bulid(DependencyObject element)
     {
+        _elementWeakReference = new WeakReference(element);
+
         WireUpTargetElement();
     }
 
-    public void Detach()
+    private static string GetViewName(DependencyObject targetElement)
     {
-        UnWireTargetElement();
+        var dp = targetElement;
+
+        while (dp is not null)
+        {
+            if (dp is IView view)
+            {
+                return view.ViewName;
+            }
+
+            dp = VisualTreeHelper.GetParent(dp);
+        }
+
+        throw new InvalidOperationException("Unable to determine the view name for the target element. Ensure that the target element is part of a view.");
     }
 
     private void CreateRegion(DependencyObject targetElement, string regionName)
@@ -29,13 +41,13 @@ internal class DelayedRegionCreationBehavior(IRegionAdapterFinder regionAdapterF
         try
         {
             var regionAdapter = _regionAdapterFinder.FindByControlType(targetElement.GetType());
-            var region = regionAdapter.Initialize(targetElement, regionName);
+            var viewName = GetViewName(targetElement);
+            var region = regionAdapter.Initialize(targetElement, regionName, viewName);
         }
         catch (Exception ex)
         {
             throw new RegionCreationException($"An exception occurred while creating a region with name '{regionName}'. The exception was: {ex}. ", ex);
         }
-        throw new NotImplementedException();
     }
 
     private void OnElementLoaded(object sender, RoutedEventArgs e)
@@ -52,8 +64,6 @@ internal class DelayedRegionCreationBehavior(IRegionAdapterFinder regionAdapterF
 
         if (targetElement.CheckAccess())
         {
-            Detach();
-
             if (!_regionCreated)
             {
                 var regionName = Navigation.GetRegionName(targetElement);
