@@ -1,88 +1,62 @@
 ﻿using Len.Abp.Wpf.Mvvm;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
 public class Region : IRegion
 {
-    private readonly ObservableCollection<ItemMetadata> _itemMetadataCollection = [];
-    private ViewsCollection? _activeViews;
-    private string _name = default!;
-    private ViewsCollection? _views;
+    private readonly ViewsCollection _activeViews;
+    private readonly ObservableCollection<RegionMetadata> _metadata = [];
+    private readonly ViewsCollection _views;
 
-    public Region(string viewName)
+    public Region(string name, string owner)
     {
         Behaviors = new RegionBehaviorCollection(this);
-        ViewName = viewName;
+        _views = new(_metadata, x => true);
+        _activeViews = new(_metadata, x => x.IsActive);
+        Name = name;
+        Owner = owner;
     }
 
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    public IViewsCollection ActiveViews
-    {
-        get
-        {
-            _views ??= new(_itemMetadataCollection, x => true);
-            return _activeViews ??= new(_itemMetadataCollection, x => x.IsActive);
-        }
-    }
+    public IViewsCollection ActiveViews => _activeViews;
 
     public IRegionBehaviorCollection Behaviors { get; }
 
-    public string Name
-    {
-        get => _name;
-        set
-        {
-            if (_name is not null && _name != value)
-            {
-                throw new InvalidOperationException($"Cannot be changed once it has been set. The current region name is '{_name}'.");
-            }
+    public string Name { get; }
 
-            if (value.IsNullOrEmpty())
-            {
-                throw new ArgumentException("Region name cannot be null or empty.");
-            }
+    public string Owner { get; }
 
-            _name = value;
-            OnPropertyChanged(nameof(Name));
-        }
-    }
-
-    public string ViewName { get; }
-
-    public IViewsCollection Views => _views ??= new(_itemMetadataCollection, x => true);
+    public IViewsCollection Views => _views;
 
     public virtual void Activate(IView view)
     {
-        var itemMetadata = GetItemMetadataOrThrow(view);
+        var metadata = GetMetadataOrThrow(view);
 
-        if (!itemMetadata.IsActive)
+        if (!metadata.IsActive)
         {
-            itemMetadata.IsActive = true;
+            metadata.IsActive = true;
         }
     }
 
-    public void Add(IView view) => InternalAdd(view, null);
-
-    public void Add(IView view, string viewName)
+    public void Add(IView view)
     {
-        if (viewName.IsNullOrEmpty())
+        if (_metadata.Any(x => x.Item == view))
         {
-            throw new ArgumentNullException(nameof(viewName), "View name cannot be null.");
+            throw new ArgumentException("View already exists in region.");
         }
 
-        InternalAdd(view, viewName);
+        var itemMetadata = new RegionMetadata(view);
+
+        _metadata.Add(itemMetadata);
     }
 
     public virtual void Deactivate(IView view)
     {
-        var itemMetadata = GetItemMetadataOrThrow(view);
+        var metadata = GetMetadataOrThrow(view);
 
-        if (itemMetadata.IsActive)
+        if (metadata.IsActive)
         {
-            itemMetadata.IsActive = false;
+            metadata.IsActive = false;
         }
     }
 
@@ -93,16 +67,16 @@ public class Region : IRegion
             throw new ArgumentException("View name cannot be null or empty.", nameof(viewName));
         }
 
-        var metadata = _itemMetadataCollection.FirstOrDefault(x => x.Item.ViewName == viewName);
+        var metadata = _metadata.FirstOrDefault(x => x.Item.ViewName == viewName);
 
         return metadata?.Item;
     }
 
     public void Remove(IView view)
     {
-        ItemMetadata itemMetadata = GetItemMetadataOrThrow(view);
+        var metadata = GetMetadataOrThrow(view);
 
-        _itemMetadataCollection.Remove(itemMetadata);
+        _metadata.Remove(metadata);
     }
 
     public void RemoveAll()
@@ -113,51 +87,12 @@ public class Region : IRegion
         }
     }
 
-    private ItemMetadata GetItemMetadataOrThrow(IView view)
+    private RegionMetadata GetMetadataOrThrow(IView view)
     {
         ArgumentNullException.ThrowIfNull(view, nameof(view));
-        var itemMetadata =
-            _itemMetadataCollection.FirstOrDefault(x => x.Item == view)
+        var metadata =
+            _metadata.FirstOrDefault(x => x.Item == view)
             ?? throw new ArgumentException($"The region does not contain the specified view .");
-        return itemMetadata;
-    }
-
-    private void InternalAdd(IView view, string? viewName)
-    {
-        if (_itemMetadataCollection.Any(x => x.Item == view))
-        {
-            throw new ArgumentException("View already exists in region.");
-        }
-
-        var itemMetadata = new ItemMetadata(view);
-
-        _itemMetadataCollection.Add(itemMetadata);
-    }
-
-    private void OnPropertyChanged(string propertyName)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-
-    public class ItemMetadata(IView item)
-    {
-        private bool _isActive;
-
-        public event EventHandler? MetadataChanged;
-
-        public bool IsActive
-        {
-            get { return _isActive; }
-            set { _isActive = value; InvokeMetadataChanged(); }
-        }
-
-        public IView Item { get; } = item;
-
-        private void InvokeMetadataChanged()
-        {
-            var metadataChangedHandler = MetadataChanged;
-
-            metadataChangedHandler?.Invoke(this, EventArgs.Empty);
-        }
+        return metadata;
     }
 }

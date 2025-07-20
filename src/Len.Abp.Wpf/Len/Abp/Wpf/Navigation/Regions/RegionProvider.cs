@@ -15,6 +15,6 @@ internal class RegionProvider : IRegionProvider, ISingletonDependency
 
     public void RemoveByViewName(string viewName)
     {
-        _regions.RemoveAll(region => region.ViewName == viewName);
+        _regions.RemoveAll(region => region.Owner == viewName);
     }
 }

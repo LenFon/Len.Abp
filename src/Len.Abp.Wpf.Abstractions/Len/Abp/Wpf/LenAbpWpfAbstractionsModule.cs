@@ -10,6 +10,6 @@ public class LenAbpWpfAbstractionsModule : AbpModule
 {
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
     {
-        Navigation.Navigation.ServiceProvider = context.ServiceProvider.GetRequiredService<IAbpApplication>().ServiceProvider;
+        Navigation.Region.ServiceProvider = context.ServiceProvider.GetRequiredService<IAbpApplication>().ServiceProvider;
     }
 }

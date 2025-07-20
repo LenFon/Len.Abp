@@ -14,6 +14,10 @@ public abstract class BasicRegionAdapter<T> : IRegionAdapter where T : class
 
     IRegion IRegionAdapter.Initialize(object regionTarget, string regionName, string viewName)
     {
+        ArgumentNullException.ThrowIfNull(regionTarget, nameof(regionTarget));
+        ArgumentNullException.ThrowIfNull(regionName, nameof(regionName));
+        ArgumentNullException.ThrowIfNull(viewName, nameof(viewName));
+
         return Initialize(GetCastedObject(regionTarget), regionName, viewName);
     }
 
@@ -39,7 +43,7 @@ public abstract class BasicRegionAdapter<T> : IRegionAdapter where T : class
         }
     }
 
-    protected abstract IRegion CreateRegion(string viewName);
+    protected abstract IRegion CreateRegion(string regionName, string viewName);
 
     private static T GetCastedObject(object regionTarget)
     {
@@ -55,11 +59,7 @@ public abstract class BasicRegionAdapter<T> : IRegionAdapter where T : class
 
     private IRegion Initialize(T regionTarget, string regionName, string viewName)
     {
-        ArgumentNullException.ThrowIfNull(regionName, nameof(regionName));
-
-        var region = CreateRegion(viewName);
-
-        region.Name = regionName;
+        var region = CreateRegion(regionName, viewName);
 
         Adapt(region, regionTarget);
         AttachBehaviors(region, regionTarget);

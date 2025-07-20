@@ -2,18 +2,17 @@
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using static Len.Abp.Wpf.Navigation.Regions.Region;
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
-public class ViewsCollection : IViewsCollection
+internal class ViewsCollection : IViewsCollection
 {
-    private readonly Predicate<ItemMetadata> _filter;
-    private readonly ObservableCollection<ItemMetadata> _items;
-    private readonly Dictionary<ItemMetadata, MonitorInfo> _monitoredItems = [];
+    private readonly Predicate<RegionMetadata> _filter;
+    private readonly ObservableCollection<RegionMetadata> _items;
+    private readonly Dictionary<RegionMetadata, MonitorInfo> _monitoredItems = [];
     private List<IView> _filteredItems = [];
 
-    public ViewsCollection(ObservableCollection<ItemMetadata> items, Predicate<ItemMetadata> filter)
+    public ViewsCollection(ObservableCollection<RegionMetadata> items, Predicate<RegionMetadata> filter)
     {
         _items = items;
         _filter = filter;
@@ -29,7 +28,7 @@ public class ViewsCollection : IViewsCollection
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    private void AddMetadataMonitor(ItemMetadata itemMetadata, bool isInList)
+    private void AddMetadataMonitor(RegionMetadata itemMetadata, bool isInList)
     {
         itemMetadata.MetadataChanged += OnMetadataChanged;
         _monitoredItems.Add(itemMetadata, new() { IsInList = isInList });
@@ -84,7 +83,7 @@ public class ViewsCollection : IViewsCollection
         {
             case NotifyCollectionChangedAction.Add:
                 UpdateFilteredItemsList();
-                foreach (ItemMetadata itemMetadata in e.NewItems!)
+                foreach (RegionMetadata itemMetadata in e.NewItems!)
                 {
                     bool isInFilter = _filter(itemMetadata);
 
@@ -97,7 +96,7 @@ public class ViewsCollection : IViewsCollection
                 break;
 
             case NotifyCollectionChangedAction.Remove:
-                foreach (ItemMetadata itemMetadata in e.OldItems!)
+                foreach (RegionMetadata itemMetadata in e.OldItems!)
                 {
                     RemoveMetadataMonitor(itemMetadata);
                     if (_filter(itemMetadata))
@@ -117,7 +116,7 @@ public class ViewsCollection : IViewsCollection
 
     private void OnMetadataChanged(object? sender, EventArgs e)
     {
-        if (sender is not ItemMetadata itemMetadata)
+        if (sender is not RegionMetadata itemMetadata)
             return;
 
         if (!_monitoredItems.TryGetValue(itemMetadata, out var monitorInfo))
@@ -158,7 +157,7 @@ public class ViewsCollection : IViewsCollection
         NotifyRemove(new[] { item }, index);
     }
 
-    private void RemoveMetadataMonitor(ItemMetadata itemMetadata)
+    private void RemoveMetadataMonitor(RegionMetadata itemMetadata)
     {
         itemMetadata.MetadataChanged -= OnMetadataChanged;
         _monitoredItems.Remove(itemMetadata);

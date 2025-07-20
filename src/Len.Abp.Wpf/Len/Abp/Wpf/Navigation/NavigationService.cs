@@ -97,7 +97,7 @@ internal class NavigationService(IRegionFinder regionFinder, IServiceProvider se
         }
 
         view = _serviceProvider.GetRequiredKeyedService<IView>(viewName);
-        region.Add(view, viewName);
+        region.Add(view);
 
         return view;
     }

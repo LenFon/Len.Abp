@@ -1,25 +1,22 @@
 ﻿using Len.Abp.Wpf.Mvvm;
-using System.ComponentModel;
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
-public interface IRegion : INotifyPropertyChanged
+public interface IRegion
 {
     IViewsCollection ActiveViews { get; }
 
     IRegionBehaviorCollection Behaviors { get; }
 
-    string Name { get; internal set; }
+    string Name { get; }
 
-    string ViewName { get; }
+    string Owner { get; }
 
     IViewsCollection Views { get; }
 
     void Activate(IView view);
 
     void Add(IView view);
-
-    void Add(IView view, string viewName);
 
     void Deactivate(IView view);
 

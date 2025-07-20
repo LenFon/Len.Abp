@@ -2,7 +2,7 @@
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
-public class SingleActiveRegion(string viewName) : Region(viewName)
+public class SingleActiveRegion(string name, string owner) : Region(name, owner)
 {
     public override void Activate(IView view)
     {
@@ -12,6 +12,7 @@ public class SingleActiveRegion(string viewName) : Region(viewName)
         {
             base.Deactivate(currentActiveView);
         }
+
         base.Activate(view);
     }
 }

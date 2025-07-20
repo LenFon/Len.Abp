@@ -1,6 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Len.Abp.Core;
 using Len.Abp.Wpf;
 using Len.Abp.Wpf.Navigation;
 using System.ComponentModel;
@@ -35,7 +34,6 @@ public partial class MainShellViewModel : ObservableObject, IScopedDependency
     [RelayCommand]
     private async Task ChangeTitleAsync()
     {
-        var items = EnumHelper.GetNameValues<Status>();
         Title = _state ? "Main Shell" : "Main Shell Window";
         _state = !_state;
 

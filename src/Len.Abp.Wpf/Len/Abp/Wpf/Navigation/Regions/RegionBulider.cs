@@ -66,7 +66,7 @@ internal class RegionBulider(IRegionAdapterFinder regionAdapterFinder) : IRegion
         {
             if (!_regionCreated)
             {
-                var regionName = Navigation.GetRegionName(targetElement);
+                var regionName = Navigation.Region.GetName(targetElement);
                 CreateRegion(targetElement, regionName);
                 _regionCreated = true;
             }

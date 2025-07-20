@@ -5,25 +5,25 @@ using System.Windows;
 
 namespace Len.Abp.Wpf.Navigation;
 
-public class Navigation
+public static class Region
 {
-    public static readonly DependencyProperty RegionNameProperty =
-        DependencyProperty.RegisterAttached("RegionName", typeof(string), typeof(Navigation), new PropertyMetadata(null, OnRegionNameChanged));
+    public static readonly DependencyProperty NameProperty =
+        DependencyProperty.RegisterAttached("Name", typeof(string), typeof(Region), new PropertyMetadata(null, OnNameChanged));
 
     internal static IServiceProvider ServiceProvider { get; set; } = default!;
 
-    public static string GetRegionName(DependencyObject regionTarget)
+    public static string GetName(DependencyObject regionTarget)
     {
         ArgumentNullException.ThrowIfNull(regionTarget);
 
-        return (string)regionTarget.GetValue(RegionNameProperty);
+        return (string)regionTarget.GetValue(NameProperty);
     }
 
-    public static void SetRegionName(DependencyObject regionTarget, string name)
+    public static void SetName(DependencyObject regionTarget, string name)
     {
         ArgumentNullException.ThrowIfNull(regionTarget);
 
-        regionTarget.SetValue(RegionNameProperty, name);
+        regionTarget.SetValue(NameProperty, name);
     }
 
     private static void CreateRegion(DependencyObject element)
@@ -33,7 +33,7 @@ public class Navigation
         builder.Bulid(element);
     }
 
-    private static void OnRegionNameChanged(DependencyObject element, DependencyPropertyChangedEventArgs e)
+    private static void OnNameChanged(DependencyObject element, DependencyPropertyChangedEventArgs e)
     {
         if (!DesignerProperties.GetIsInDesignMode(element))
         {

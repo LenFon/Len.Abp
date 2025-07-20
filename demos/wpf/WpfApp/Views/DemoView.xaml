@@ -18,6 +18,6 @@
             FontWeight="Bold"
             Text="{Binding Message}" />
         <Button Command="{Binding ClickCommand}" Content="Click Me" />
-        <ContentControl len:Navigation.RegionName="DemoRegion" />
+        <ContentControl len:Region.Name="DemoRegion" />
     </StackPanel>
 </UserControl>
