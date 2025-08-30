@@ -1,7 +1,9 @@
-﻿using System.Windows;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Windows;
+using Volo.Abp;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.Modularity;
 
 namespace Len.Abp.Wpf;
 
@@ -12,8 +14,8 @@ internal class WpfThreadService(
 ) : ISingletonDependency
 {
     private readonly IAbpLazyServiceProvider _abpLazyServiceProvider = abpLazyServiceProvider;
-    private readonly WpfContext _uiContext = wpfContext;
     private readonly IHostApplicationLifetime _hostApplicationLifetime = hostApplicationLifetime;
+    private readonly WpfContext _uiContext = wpfContext;
 
     public Task StartAsync()
     {
@@ -34,43 +36,6 @@ internal class WpfThreadService(
         return tcs.Task;
     }
 
-    private void StartUiThread()
-    {
-        _uiContext.WpfApplication.Dispatcher.Invoke(() =>
-        {
-            _uiContext.IsRunning = true;
-
-            var wpfServices = _abpLazyServiceProvider.GetServices<IWpfService>();
-            foreach (var wpfService in wpfServices)
-            {
-                wpfService.Initialize(_uiContext.WpfApplication);
-            }
-
-            var shellWindows = _abpLazyServiceProvider.GetServices<IShell>().Cast<Window>().ToList();
-
-            _uiContext.WpfApplication.Startup += (s, e) =>
-            {
-                foreach (var window in shellWindows)
-                {
-                    window?.Show();
-                }
-            };
-
-            if (_uiContext.WpfApplication.Dispatcher.Thread.ThreadState != ThreadState.Running)
-            {
-                _uiContext.WpfApplication.Run();
-            }
-        });
-    }
-
-    private void PreStartUiThread()
-    {
-        var wpfApplication = new Application() { ShutdownMode = _uiContext.ShutdownMode };
-        wpfApplication.Dispatcher.Invoke(() => wpfApplication.Exit += (s, e) => OnApplicationExit());
-
-        _uiContext.WpfApplication = wpfApplication;
-    }
-
     private void OnApplicationExit()
     {
         _uiContext.IsRunning = false;
@@ -88,5 +53,45 @@ internal class WpfThreadService(
         }
 
         _hostApplicationLifetime.StopApplication();
+    }
+
+    private void PreStartUiThread()
+    {
+        var wpfApplication = new Application() { ShutdownMode = _uiContext.ShutdownMode };
+        wpfApplication.Dispatcher.Invoke(() => wpfApplication.Exit += (s, e) => OnApplicationExit());
+
+        _uiContext.WpfApplication = wpfApplication;
+    }
+
+    private void StartUiThread()
+    {
+        _uiContext.WpfApplication.Dispatcher.Invoke(() =>
+        {
+            _uiContext.IsRunning = true;
+            var app = _abpLazyServiceProvider.LazyGetRequiredService<IAbpApplication>();
+
+            foreach (var module in app.Modules)
+            {
+                if (module.Instance is AbpWpfModule abpModule)
+                {
+                    abpModule.ConfigureResources(_uiContext.WpfApplication.Resources.MergedDictionaries);
+                }
+            }
+
+            var shellWindows = _abpLazyServiceProvider.GetServices<IShell>().Cast<Window>().ToList();
+
+            _uiContext.WpfApplication.Startup += (s, e) =>
+            {
+                foreach (var window in shellWindows)
+                {
+                    window?.Show();
+                }
+            };
+
+            if (_uiContext.WpfApplication.Dispatcher.Thread.ThreadState != ThreadState.Running)
+            {
+                _uiContext.WpfApplication.Run();
+            }
+        });
     }
 }
