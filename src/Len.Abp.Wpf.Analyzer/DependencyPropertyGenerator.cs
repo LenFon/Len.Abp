@@ -36,7 +36,6 @@ internal class DependencyPropertyGenerator : IIncrementalGenerator
 
     private static FileWithName GetSourceCode((ClassData Class, DependencyPropertyData DependencyProperty) data)
     {
-        //Debugger.Launch();
         return new FileWithName(
             Name: $"{data.Class.FullName}.Properties.{data.DependencyProperty.Name}.g.cs",
             Text: GenerateDependencyProperty(data.Class, data.DependencyProperty)
