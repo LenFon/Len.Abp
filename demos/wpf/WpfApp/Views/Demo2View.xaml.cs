@@ -14,4 +14,8 @@ public partial class Demo2View : UserControl
     {
         InitializeComponent();
     }
+
+    private void Button_SomethingHappened(object sender, System.Windows.RoutedEventArgs e)
+    {
+    }
 }

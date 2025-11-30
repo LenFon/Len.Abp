@@ -44,4 +44,5 @@ public class RoutedEventAttribute(string name, RoutingStrategy strategy, Type? h
 /// <typeparam name="T">The type of the event handler. This must be a delegate type.</typeparam>
 /// <param name="name">The name of the routed event. The name must be unique within the owner type and cannot be null or an empty string.</param>
 /// <param name="strategy">The routing strategy of the routed event.</param>
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public class RoutedEventAttribute<T>(string name, RoutingStrategy strategy) : RoutedEventAttribute(name, strategy, typeof(T));

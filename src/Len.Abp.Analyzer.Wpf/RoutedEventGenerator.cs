@@ -1,4 +1,5 @@
-﻿using Len.Abp.Analyzer;
+﻿using System.Diagnostics;
+using Len.Abp.Analyzer;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -7,7 +8,7 @@ internal class RoutedEventGenerator()
     : BasicGenerator<RoutedEventGenerator.RoutedEventData>("REG", "Len.Abp.Wpf.RoutedEventAttribute", "Len.Abp.Wpf.RoutedEventAttribute`1")
 {
     protected override string CreateFileName((ClassData Class, RoutedEventData Data, string Version) context) =>
-        $"{context.Class.FullName}.RoutedEvents.{context.Data.Name}.g.cs";
+        $"{context.Class.FullName}.{context.Data.Name}.g.cs";
 
     protected override string CreateSourceCode((ClassData Class, RoutedEventData Data, string Version) context)
     {
@@ -45,6 +46,14 @@ internal class RoutedEventGenerator()
                     add { AddHandler({{context.Data.Name}}Event, value); }
                     remove { RemoveHandler({{context.Data.Name}}Event, value); }
                 }
+
+                [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(AttachedRoutedEventGenerator)}}", "{{context.Version}}")]
+                protected void Raise{{context.Data.Name}}Event({{context.Data.EventArgs}} args)
+                {
+                    args.RoutedEvent = {{context.Data.Name}}Event;
+                    RaiseEvent(args);
+                }
             }
             """;
 
@@ -64,7 +73,14 @@ internal class RoutedEventGenerator()
         return (classData, attribute, version);
     }
 
-    public readonly record struct RoutedEventData(string Name, string Type, string Strategy, string? Description, string? Category)
+    public readonly record struct RoutedEventData(
+        string Name,
+        string Type,
+        string EventArgs,
+        string Strategy,
+        string? Description,
+        string? Category
+    )
     {
         public static implicit operator RoutedEventData(AttributeData attribute)
         {
@@ -74,11 +90,26 @@ internal class RoutedEventGenerator()
             var strategy = $"global::{attribute.ConstructorArguments.ElementAt(1).ToCSharpString()}";
             var typeSymbol =
                 attribute.GetGenericTypeArgument(0) ?? attribute.ConstructorArguments.ElementAtOrDefault(2).Value as ITypeSymbol;
-            var type = typeSymbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "global::System.Windows.RoutedEventHandler";
+
+            string type;
+            string eventArgs;
+            if (typeSymbol is null)
+            {
+                type = "global::System.Windows.RoutedEventHandler";
+                eventArgs = "global::System.Windows.RoutedEventArgs";
+            }
+            else
+            {
+                type = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                eventArgs = ((INamedTypeSymbol)typeSymbol!)
+                    .DelegateInvokeMethod!.Parameters[1]
+                    .Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            }
+
             var description = attribute.GetNamedArgument("Description").Value?.ToString();
             var category = attribute.GetNamedArgument("Category").Value?.ToString();
 
-            return new RoutedEventData(name, type, strategy, description, category);
+            return new RoutedEventData(name, type, eventArgs, strategy, description, category);
         }
     }
 }
