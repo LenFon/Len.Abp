@@ -1,80 +1,39 @@
-﻿using System.Net;
-using Len.Abp.Analyzer;
+﻿using Len.Abp.Analyzer;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Net;
 
 [Generator]
-internal class DependencyPropertyGenerator : IIncrementalGenerator
-{
-    private const string _id = "DPG";
-
-    public void Initialize(IncrementalGeneratorInitializationContext context)
-    {
-        var framework = context.GetFramework();
-        var version = context.GetVersion();
-
-        context
-            .SyntaxProvider.ForAttributeWithMetadataNameOfClassesAndRecords("Len.Abp.Wpf.DependencyPropertyAttribute")
-            .SelectManyAttributes()
-            .Combine(framework)
-            .Combine(version)
-            .SelectAndReportExceptions(PrepareData, context, _id)
-            .WhereNotNull()
-            .SelectAndReportExceptions(GetSourceCode, context, _id)
-            .AddSource(context);
-
-        context
-            .SyntaxProvider.ForAttributeWithMetadataNameOfClassesAndRecords("Len.Abp.Wpf.DependencyPropertyAttribute`1")
-            .SelectManyAttributes()
-            .Combine(framework)
-            .Combine(version)
-            .SelectAndReportExceptions(PrepareData, context, _id)
-            .WhereNotNull()
-            .SelectAndReportExceptions(GetSourceCode, context, _id)
-            .AddSource(context);
-    }
-
-    private static FileWithName GetSourceCode((ClassData Class, DependencyPropertyData DependencyProperty) data)
-    {
-        return new FileWithName(
-            Name: $"{data.Class.FullName}.Properties.{data.DependencyProperty.Name}.g.cs",
-            Text: GenerateDependencyProperty(data.Class, data.DependencyProperty)
-        );
-    }
-
-    #region Prepare Data
-
-    private static (ClassData Class, DependencyPropertyData DependencyProperty)? PrepareData(
-        ((ClassWithAttributesContext context, Framework framework) left, string version) tuple
+internal class DependencyPropertyGenerator()
+    : BasicGenerator<DependencyPropertyGenerator.DependencyPropertyData>(
+        "DPG",
+        "Len.Abp.Wpf.DependencyPropertyAttribute",
+        "Len.Abp.Wpf.DependencyPropertyAttribute`1"
     )
+{
+    protected override string CreateSourceCode((ClassData Class, DependencyPropertyData Data, string Version) context) =>
+        GenerateDependencyProperty(context.Class, context.Data, context.Version);
+
+    protected override string CreateFileName((ClassData Class, DependencyPropertyData Data, string Version) context) =>
+        $"{context.Class.FullName}.Properties.{context.Data.Name}.g.cs";
+
+    protected override (ClassData Class, DependencyPropertyData Data, string Version)? PrepareData((ClassContext, string) context)
     {
-        var (((_, attributes, classSyntax, classSymbol), framework), version) = tuple;
+        var ((_, attributes, classSyntax, classSymbol), version) = context;
         if (attributes.FirstOrDefault() is not { } attribute)
         {
             return null;
         }
 
-        var classData = classSymbol.GetClassData(framework, version);
-        var dependencyPropertyData = CreateDependencyPropertyData(
-            attribute,
-            framework,
-            version,
-            classSyntax.TryFindAttributeSyntax(attribute)
-        );
+        var classData = classSymbol.GetClassData();
+        var dependencyPropertyData = CreateDependencyPropertyData(attribute, classSyntax.TryFindAttributeSyntax(attribute));
 
-        return (classData, dependencyPropertyData);
+        return (classData, dependencyPropertyData, version);
     }
-
-    #endregion Prepare Data
 
     #region CreateDependencyPropertyData
 
-    private static DependencyPropertyData CreateDependencyPropertyData(
-        AttributeData attribute,
-        Framework framework,
-        string version,
-        AttributeSyntax? attributeSyntax = null
-    )
+    private static DependencyPropertyData CreateDependencyPropertyData(AttributeData attribute, AttributeSyntax? attributeSyntax = null)
     {
         attribute = attribute ?? throw new ArgumentNullException(nameof(attribute));
 
@@ -99,8 +58,6 @@ internal class DependencyPropertyGenerator : IIncrementalGenerator
         var validate = attribute.GetNamedArgument("Validate").To<bool>();
 
         return new DependencyPropertyData(
-            framework,
-            version,
             name,
             type,
             shortType,
@@ -118,9 +75,7 @@ internal class DependencyPropertyGenerator : IIncrementalGenerator
         );
     }
 
-    readonly record struct DependencyPropertyData(
-        Framework Framework,
-        string Version,
+    public readonly record struct DependencyPropertyData(
         string Name,
         string Type,
         string ShortType,
@@ -144,13 +99,13 @@ internal class DependencyPropertyGenerator : IIncrementalGenerator
     private static bool ExistsMethod(ClassData @class, string mehtodSignature) =>
         @class.Methods.Contains($"{@class.FullName}.{mehtodSignature}");
 
-    private static string GenerateCoerce(ClassData @class, DependencyPropertyData property)
+    private static string GenerateCoerce(ClassData @class, DependencyPropertyData property, string version)
     {
         if (!property.Coerce)
             return string.Empty;
 
         var code = $"""
-            [global::System.CodeDom.Compiler.GeneratedCode("{nameof(DependencyPropertyGenerator)}", "{@class.Version}")]
+            [global::System.CodeDom.Compiler.GeneratedCode("{nameof(DependencyPropertyGenerator)}", "{version}")]
                 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
                 private static partial {property.Type} Coerce{property.Name}({property.Type}? value);
             """;
@@ -169,7 +124,7 @@ internal class DependencyPropertyGenerator : IIncrementalGenerator
         return property.DefaultValue != null ? $"({type}){property.DefaultValue}" : $"default({type})";
     }
 
-    private static string GenerateDependencyProperty(ClassData @class, DependencyPropertyData property)
+    private static string GenerateDependencyProperty(ClassData @class, DependencyPropertyData property, string version)
     {
         var code = $$"""
             // <auto-generated />
@@ -189,7 +144,7 @@ internal class DependencyPropertyGenerator : IIncrementalGenerator
             )}}
                 /// </summary>
                 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-                [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(DependencyPropertyGenerator)}}", "{{@class.Version}}")]
+                [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(DependencyPropertyGenerator)}}", "{{version}}")]
                 public static readonly global::System.Windows.DependencyProperty {{property.Name}}Property =
                     global::System.Windows.DependencyProperty.Register(
                         "{{property.Name}}",
@@ -208,7 +163,7 @@ internal class DependencyPropertyGenerator : IIncrementalGenerator
                 /// Default value: {{GenerateDefaultValue(property)}}
                 /// </summary>
                 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-                [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(DependencyPropertyGenerator)}}", "{{@class.Version}}")]
+                [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(DependencyPropertyGenerator)}}", "{{version}}")]
                 [global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
                 {{(property.Description is { } ? $"[global::System.ComponentModel.Category(\"{property.Description}\")]" : string.Empty)}}
                 {{(property.Bindable.HasValue ? $"[global::System.ComponentModel.Bindable({property.Bindable.Value.ToBooleanKeyword()})]" : string.Empty)}}
@@ -220,16 +175,12 @@ internal class DependencyPropertyGenerator : IIncrementalGenerator
                     set { SetValue({{property.Name}}Property, value); }
                 }
 
-                {{GenerateCoerce(@class, property)}}
+                {{GenerateCoerce(@class, property, version)}}
 
-                {{GenerateIsValid(@class, property)}}
-
-                [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-                [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(DependencyPropertyGenerator)}}", "{{@class.Version}}")]
-                partial void On{{property.Name}}Changed({{property.Type}} newValue);
+                {{GenerateIsValid(@class, property, version)}}
 
                 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-                [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(DependencyPropertyGenerator)}}", "{{@class.Version}}")]
+                [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(DependencyPropertyGenerator)}}", "{{version}}")]
                 partial void On{{property.Name}}Changed({{property.Type}} oldValue, {{property.Type}} newValue);
             }
             """;
@@ -237,13 +188,13 @@ internal class DependencyPropertyGenerator : IIncrementalGenerator
         return code.RemoveBlankLines();
     }
 
-    private static string GenerateIsValid(ClassData @class, DependencyPropertyData property)
+    private static string GenerateIsValid(ClassData @class, DependencyPropertyData property, string version)
     {
         if (!property.Validate)
             return string.Empty;
 
         var code = $"""
-            [global::System.CodeDom.Compiler.GeneratedCode("{nameof(DependencyPropertyGenerator)}", "{@class.Version}")]
+            [global::System.CodeDom.Compiler.GeneratedCode("{nameof(DependencyPropertyGenerator)}", "{version}")]
                 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
                 private static partial bool Is{property.Name}Valid({property.Type}? value);
             """;
@@ -254,11 +205,9 @@ internal class DependencyPropertyGenerator : IIncrementalGenerator
     private static string GeneratePropertyChangedCallback(ClassData @class, DependencyPropertyData property)
     {
         var methodName = $"On{property.Name}Changed";
-        var isChanged0 = ExistsMethod(@class, $"{methodName}()");
-        var isChanged1 = ExistsMethod(@class, $"{methodName}({property.Type})");
-        var isChanged2 = ExistsMethod(@class, $"{methodName}({property.Type}, {property.Type})");
+        var isChanged = ExistsMethod(@class, $"{methodName}({property.Type}, {property.Type})");
 
-        if (!isChanged0 && !isChanged1 && !isChanged2)
+        if (!isChanged)
             return "propertyChangedCallback: null,";
 
         var code = $$"""
@@ -267,9 +216,7 @@ internal class DependencyPropertyGenerator : IIncrementalGenerator
                                 if (s is not {{@class.Type}} control)
                                     return;
 
-                                {{(isChanged0 ? $"control.{methodName}();" : "")}}
-                                {{(isChanged1 ? $"control.{methodName}(({property.Type})e.NewValue);" : "")}}
-                                {{(isChanged2 ? $"control.{methodName}(({property.Type})e.OldValue, ({property.Type})e.NewValue);" : "")}}
+                                {{(isChanged ? $"control.{methodName}(({property.Type})e.OldValue, ({property.Type})e.NewValue);" : "")}}
                             },
             """;
         return code;

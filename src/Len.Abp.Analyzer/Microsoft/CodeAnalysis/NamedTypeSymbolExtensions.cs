@@ -4,7 +4,7 @@ namespace Microsoft.CodeAnalysis;
 
 public static class NamedTypeSymbolExtensions
 {
-    public static ClassData GetClassData(this INamedTypeSymbol classSymbol, Framework framework, string version)
+    public static ClassData GetClassData(this INamedTypeSymbol classSymbol)
     {
         classSymbol = classSymbol ?? throw new ArgumentNullException(nameof(classSymbol));
 
@@ -26,9 +26,7 @@ public static class NamedTypeSymbolExtensions
             FullName: fullClassName,
             Type: type,
             Modifiers: classModifiers,
-            Version: version,
             IsStatic: isStaticClass,
-            Framework: framework,
             Methods: [.. methods]
         );
     }

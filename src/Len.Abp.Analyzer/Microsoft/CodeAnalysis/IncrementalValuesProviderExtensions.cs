@@ -1,6 +1,5 @@
 ﻿using Len.Abp.Analyzer;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Microsoft.CodeAnalysis;
 
@@ -42,54 +41,6 @@ public static class IncrementalValuesProviderExtensions
                 ctx.AddSource(file.Name, file.Text);
             }
         );
-
-    /// <summary>
-    /// Get the target framework for the current project during source generation.
-    /// </summary>
-    /// <remarks>This method is intended for use within source generators to determine the framework  being
-    /// targeted by the project. The returned value can be used to tailor generated code  to the specific
-    /// framework.</remarks>
-    /// <param name="context">The context for the incremental generator, providing access to the compilation and project information.</param>
-    /// <returns>An <see cref="IncrementalValueProvider{T}"/> that provides the detected <see cref="Framework"/>  for the current
-    /// project.</returns>
-    public static IncrementalValueProvider<Framework> GetFramework(this IncrementalGeneratorInitializationContext context)
-    {
-        var frameworkWithDiagnostic = context.AnalyzerConfigOptionsProvider.Select(
-            (s, _) =>
-            {
-                var framework = s.TryGetFramework();
-                var diagnostic =
-                    framework == Framework.Unkwon
-                        ? Diagnostic.Create(
-                            new DiagnosticDescriptor(
-                                "DF001",
-                                "Framework is not recognized",
-                                AnalyzerConfigOptionsProviderExtensions.FrameworkIsNotRecognized,
-                                "Usage",
-                                DiagnosticSeverity.Error,
-                                true
-                            ),
-                            Location.None
-                        )
-                        : null;
-
-                return (Framework: framework, Diagnostic: diagnostic);
-            }
-        );
-
-        context.RegisterSourceOutput(
-            frameworkWithDiagnostic,
-            static (ctx, s) =>
-            {
-                if (s.Diagnostic == null)
-                    return;
-
-                ctx.ReportDiagnostic(s.Diagnostic);
-            }
-        );
-
-        return frameworkWithDiagnostic.Select(static (s, _) => s.Framework);
-    }
 
     public static IncrementalValueProvider<TResult> SelectAndReportExceptions<TSource, TResult>(
         this IncrementalValueProvider<TSource> source,
@@ -203,13 +154,13 @@ public static class IncrementalValuesProviderExtensions
     /// <returns>
     /// An <see cref="IncrementalValuesProvider{ClassWithAttributesContext}"/> containing the selected attributes
     /// </returns>
-    public static IncrementalValuesProvider<ClassWithAttributesContext> SelectAttributes(
+    public static IncrementalValuesProvider<ClassContext> SelectAttributes(
         this IncrementalValuesProvider<GeneratorAttributeSyntaxContext> source
     )
     {
         return source.Select(
             static (context, _) =>
-                new ClassWithAttributesContext(
+                new ClassContext(
                     SemanticModel: context.SemanticModel,
                     Attributes: context.Attributes,
                     ClassSyntax: (ClassDeclarationSyntax)context.TargetNode,
@@ -227,7 +178,7 @@ public static class IncrementalValuesProviderExtensions
     /// <returns>
     /// An <see cref="IncrementalValuesProvider{ClassWithAttributesContext}"/> containing each attribute and its associated class information
     /// </returns>
-    public static IncrementalValuesProvider<ClassWithAttributesContext> SelectManyAttributes(
+    public static IncrementalValuesProvider<ClassContext> SelectManyAttributes(
         this IncrementalValuesProvider<GeneratorAttributeSyntaxContext> source
     )
     {
@@ -241,7 +192,7 @@ public static class IncrementalValuesProviderExtensions
 
                         return attributeSyntax != null;
                     })
-                    .Select(s => new ClassWithAttributesContext(
+                    .Select(s => new ClassContext(
                         SemanticModel: context.SemanticModel,
                         Attributes: [s],
                         ClassSyntax: (ClassDeclarationSyntax)context.TargetNode,

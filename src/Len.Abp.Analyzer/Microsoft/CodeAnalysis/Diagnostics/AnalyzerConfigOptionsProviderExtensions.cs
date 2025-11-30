@@ -1,32 +1,10 @@
-﻿using Len.Abp.Analyzer;
-
-namespace Microsoft.CodeAnalysis.Diagnostics;
+﻿namespace Microsoft.CodeAnalysis.Diagnostics;
 
 /// <summary>
 /// Extensions for <see cref="AnalyzerConfigOptionsProvider"/>.
 /// </summary>
 public static class AnalyzerConfigOptionsProviderExtensions
 {
-    public const string FrameworkIsNotRecognized =
-        @"Framework is not recognized.You can explicitly specify the framework by setting one of the following constants in your project:HAS_WPF";
-
-    /// <summary>
-    /// Get the target framework of the project.
-    /// </summary>
-    /// <param name="provider"></param>
-    /// <returns></returns>
-    /// <exception cref="InvalidOperationException"></exception>
-    public static Framework GetFramework(this AnalyzerConfigOptionsProvider provider)
-    {
-        var framework = provider.TryGetFramework();
-        if (framework != Framework.Unkwon)
-        {
-            return framework;
-        }
-
-        throw new InvalidOperationException(FrameworkIsNotRecognized);
-    }
-
     /// <summary>
     /// Gets a global option from the provider.
     /// </summary>
@@ -55,26 +33,6 @@ public static class AnalyzerConfigOptionsProviderExtensions
 
         return string.Equals(isBuildingProjectValue, "false", StringComparison.OrdinalIgnoreCase)
             || string.Equals(isDesignTimeBuildValue, "true", StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Tries to get the target framework of the project.
-    /// </summary>
-    /// <param name="provider"></param>
-    /// <returns></returns>
-    /// <exception cref="ArgumentNullException">provider is null.</exception>
-    public static Framework TryGetFramework(this AnalyzerConfigOptionsProvider provider)
-    {
-        provider = provider ?? throw new ArgumentNullException(nameof(provider));
-
-        var constants = provider.GetGlobalOption("DefineConstants", prefix: "Framework") ?? string.Empty;
-        var useWpf = bool.Parse(provider.GetGlobalOption("UseWPF") ?? bool.FalseString) || constants.Contains("HAS_WPF");
-
-        return (useWpf) switch
-        {
-            true => Framework.Wpf,
-            _ => Framework.Unkwon,
-        };
     }
 
     private static string GetFullName(string name, string? prefix = null)

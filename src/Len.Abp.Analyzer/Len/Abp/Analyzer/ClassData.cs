@@ -6,7 +6,5 @@ public readonly record struct ClassData(
     string FullName,
     string Type,
     string Modifiers,
-    string Version,
     bool IsStatic,
-    Framework Framework,
     IReadOnlyList<string> Methods);

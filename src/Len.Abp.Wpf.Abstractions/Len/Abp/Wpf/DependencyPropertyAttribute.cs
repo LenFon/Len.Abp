@@ -24,6 +24,9 @@ public class DependencyPropertyAttribute(string name, Type type) : Attribute
     /// </summary>
     public string? Category { get; set; }
 
+    /// <summary>
+    /// Whether to generate the partial method for CoerceValueCallback.
+    /// </summary>
     public bool Coerce { get; set; }
 
     /// <summary>
@@ -58,7 +61,7 @@ public class DependencyPropertyAttribute(string name, Type type) : Attribute
     public Type Type { get; } = type ?? throw new ArgumentNullException(nameof(type));
 
     /// <summary>
-    ///
+    /// Whether to generate the partial method for validateValueCallback.
     /// </summary>
     public bool Validate { get; set; }
 }

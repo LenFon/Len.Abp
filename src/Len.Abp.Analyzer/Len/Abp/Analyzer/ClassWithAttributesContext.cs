@@ -11,7 +11,7 @@ namespace Len.Abp.Analyzer;
 /// <param name="Attributes">The attributes applied to the class.</param>
 /// <param name="ClassSyntax">The syntax node representing the class declaration.</param>
 /// <param name="ClassSymbol">The symbol representing the class in the semantic model.</param>
-public readonly record struct ClassWithAttributesContext(
+public readonly record struct ClassContext(
     SemanticModel SemanticModel,
     ImmutableArray<AttributeData> Attributes,
     ClassDeclarationSyntax ClassSyntax,

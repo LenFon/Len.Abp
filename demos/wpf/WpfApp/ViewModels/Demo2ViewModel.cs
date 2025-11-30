@@ -4,6 +4,7 @@ using Len.Abp.Wpf;
 using Len.Abp.Wpf.Navigation;
 using Len.Abp.Wpf.Navigation.Regions;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Volo.Abp.DependencyInjection;
 
 namespace WpfApp.ViewModels;
@@ -38,6 +39,7 @@ public partial class Demo2ViewModel : ObservableObject, ITransientDependency, IN
 }
 
 [DependencyProperty<double>("Age", DefaultValue = 10D, Description = "年龄", Coerce = true, Validate = true, Browsable = false, Bindable = true)]
+[DependencyProperty<Color>("Color", DefaultValueExpression = "System.Windows.Media.Colors.Red", Description = "颜色", IsReadOnly = true)]
 public sealed partial class TestControl : Control
 {
     private static partial double CoerceAge(double? value)
