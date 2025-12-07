@@ -1,6 +1,9 @@
 ﻿using Len.Abp.Analyzer;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System;
+using System.Diagnostics;
 using System.Net;
 
 [Generator]
@@ -15,65 +18,21 @@ internal class DependencyPropertyGenerator()
         GenerateDependencyProperty(context.Class, context.Data, context.Version);
 
     protected override string CreateFileName((ClassData Class, DependencyPropertyData Data, string Version) context) =>
-        $"{context.Class.FullName}.Properties.{context.Data.Name}.g.cs";
+        $"{context.Class.FullName}.{context.Data.Name}.g.cs";
 
     protected override (ClassData Class, DependencyPropertyData Data, string Version)? PrepareData((ClassContext, string) context)
     {
-        var ((_, attributes, classSyntax, classSymbol), version) = context;
-        if (attributes.FirstOrDefault() is not { } attribute)
+        var (classContext, version) = context;
+        if (classContext.Attributes.FirstOrDefault() is not { } attribute)
         {
             return null;
         }
 
-        var classData = classSymbol.GetClassData();
-        var dependencyPropertyData = CreateDependencyPropertyData(attribute, classSyntax.TryFindAttributeSyntax(attribute));
-
-        return (classData, dependencyPropertyData, version);
+        var classData = classContext.ClassSymbol.GetClassData();
+        return (classData, classContext, version);
     }
 
     #region CreateDependencyPropertyData
-
-    private static DependencyPropertyData CreateDependencyPropertyData(AttributeData attribute, AttributeSyntax? attributeSyntax = null)
-    {
-        attribute = attribute ?? throw new ArgumentNullException(nameof(attribute));
-
-        var name = attribute.ConstructorArguments.ElementAtOrDefault(0).Value?.ToString() ?? string.Empty;
-        var typeSymbol = attribute.GetGenericTypeArgument(0) ?? attribute.ConstructorArguments.ElementAtOrDefault(1).Value as ITypeSymbol;
-        var type = typeSymbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? string.Empty;
-        var shortType = typeSymbol?.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat) ?? string.Empty;
-        var isValueType = typeSymbol?.IsValueType ?? true;
-        var isSpecialType = typeSymbol.IsSpecialType() ?? false;
-        var defaultValue =
-            attribute.GetNamedArgument("DefaultValueExpression").Value?.ToString()
-            ?? attribute.GetNamedArgument("DefaultValue").Value?.ToString();
-        var defaultValueDocumentation =
-            attribute.GetNamedArgument("DefaultValueExpression").Value?.ToString()
-            ?? attributeSyntax?.GetNamedArgumentExpression("DefaultValue");
-        var isReadOnly = attribute.GetNamedArgument("IsReadOnly").To<bool>();
-        var description = attribute.GetNamedArgument("Description").Value?.ToString();
-        var category = attribute.GetNamedArgument("Category").Value?.ToString();
-        var bindable = attribute.GetNamedArgument("Bindable").Value?.To<bool>();
-        var browsable = attribute.GetNamedArgument("Browsable").Value?.To<bool>();
-        var coerce = attribute.GetNamedArgument("Coerce").To<bool>();
-        var validate = attribute.GetNamedArgument("Validate").To<bool>();
-
-        return new DependencyPropertyData(
-            name,
-            type,
-            shortType,
-            isValueType,
-            isSpecialType,
-            defaultValue,
-            defaultValueDocumentation,
-            isReadOnly,
-            category,
-            description,
-            bindable,
-            browsable,
-            coerce,
-            validate
-        );
-    }
 
     public readonly record struct DependencyPropertyData(
         string Name,
@@ -86,46 +45,87 @@ internal class DependencyPropertyGenerator()
         bool IsReadOnly,
         string? Category,
         string? Description,
-        bool? Bindable,
-        bool? Browsable,
-        bool Coerce,
-        bool Validate
-    );
+        string? Flags,
+        string UpdateSourceTrigger
+    )
+    {
+        public static implicit operator DependencyPropertyData(ClassContext context)
+        {
+            //Debugger.Launch();
+            var attribute = context.Attributes.First();
+            var attributeSyntax = context.ClassSyntax.TryFindAttributeSyntax(attribute);
+            var name = attribute.ConstructorArguments.ElementAtOrDefault(0).Value?.ToString() ?? string.Empty;
+            var typeSymbol =
+                attribute.GetGenericTypeArgument(0) ?? attribute.ConstructorArguments.ElementAtOrDefault(1).Value as ITypeSymbol;
+            var type = typeSymbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? string.Empty;
+            var shortType = typeSymbol?.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat) ?? string.Empty;
+            var isValueType = typeSymbol?.IsValueType ?? true;
+            var isSpecialType = typeSymbol.IsSpecialType() ?? false;
+            var defaultValue =
+                attribute.GetNamedArgument("DefaultValueExpression").Value?.ToString()
+                ?? attribute.GetNamedArgument("DefaultValue").Value?.ToString();
+            var defaultValueDocumentation =
+                attribute.GetNamedArgument("DefaultValueExpression").Value?.ToString()
+                ?? attributeSyntax?.GetNamedArgumentExpression("DefaultValue");
+            var isReadOnly = attribute.GetNamedArgument("IsReadOnly").To<bool>();
+            var description = attribute.GetNamedArgument("Description").Value?.ToString();
+            var category = attribute.GetNamedArgument("Category").Value?.ToString();
+            var temp = attribute.GetNamedArgument("Flags");
+            string? flags = null;
+            if (!temp.IsNull)
+            {
+                var arr = temp.ToCSharpString()
+                    .Split(['|'], StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Trim())
+                    .Where(w => w != "System.Windows.FrameworkPropertyMetadataOptions.None")
+                    .Select(s => $"global::{s}")
+                    .ToArray();
+
+                flags = string.Join(" | ", arr);
+            }
+
+            temp = attribute.GetNamedArgument("UpdateSourceTrigger");
+            var updateSourceTrigger = temp.IsNull
+                ? "global::System.Windows.Data.UpdateSourceTrigger.Default"
+                : $"global::{attribute.GetNamedArgument("UpdateSourceTrigger").ToCSharpString()}";
+
+            return new DependencyPropertyData(
+                name,
+                type,
+                shortType,
+                isValueType,
+                isSpecialType,
+                defaultValue,
+                defaultValueDocumentation,
+                isReadOnly,
+                category,
+                description,
+                flags,
+                updateSourceTrigger
+            );
+        }
+    }
 
     #endregion CreateDependencyPropertyData
 
     #region Generate Code
 
-    private static bool ExistsMethod(ClassData @class, string mehtodSignature) =>
-        @class.Methods.Contains($"{@class.FullName}.{mehtodSignature}");
-
-    private static string GenerateCoerce(ClassData @class, DependencyPropertyData property, string version)
-    {
-        if (!property.Coerce)
-            return string.Empty;
-
-        var code = $"""
-            [global::System.CodeDom.Compiler.GeneratedCode("{nameof(DependencyPropertyGenerator)}", "{version}")]
-                [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-                private static partial {property.Type} Coerce{property.Name}({property.Type}? value);
-            """;
-
-        return code;
-    }
-
     private static string GenerateDefaultValue(DependencyPropertyData property)
     {
+        //Debugger.Launch();
         var type = property.Type;
         if (property is { IsSpecialType: true, DefaultValueDocumentation: { } })
         {
             return property.DefaultValueDocumentation;
         }
 
-        return property.DefaultValue != null ? $"({type}){property.DefaultValue}" : $"default({type})";
+        return property.DefaultValue ?? $"default({type})";
     }
 
     private static string GenerateDependencyProperty(ClassData @class, DependencyPropertyData property, string version)
     {
+        var identifiers = property.IsReadOnly ? "protected " : string.Empty;
+        var key = property.IsReadOnly ? "Key" : string.Empty;
         var code = $$"""
             // <auto-generated />
 
@@ -135,29 +135,7 @@ internal class DependencyPropertyGenerator()
 
             partial class {{@class.Name}}
             {
-                /// <summary>
-                /// Identifies the <see cref="{{property.Name}}"/> dependency property.<br/>
-                /// Default value: {{(
-                !string.IsNullOrEmpty(property.DefaultValueDocumentation)
-                    ? property.DefaultValueDocumentation
-                    : $"default({WebUtility.HtmlEncode(property.ShortType)})"
-            )}}
-                /// </summary>
-                [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-                [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(DependencyPropertyGenerator)}}", "{{version}}")]
-                public static readonly global::System.Windows.DependencyProperty {{property.Name}}Property =
-                    global::System.Windows.DependencyProperty.Register(
-                        "{{property.Name}}",
-                        typeof({{property.Type}}),
-                        typeof({{@class.Type}}),
-                        new global::System.Windows.PropertyMetadata(
-                            {{GenerateDefaultValue(property)}},
-                            {{GeneratePropertyChangedCallback(@class, property)}}
-                            coerceValueCallback: {{(property.Coerce ? $"static (s, value) => Coerce{property.Name}(({property.Type}?)value)" : "null")}}
-                        ),
-                        validateValueCallback: {{(property.Validate ? $"static value => Is{property.Name}Valid(({property.Type}?)value)" : "null")}}
-                    );
-
+                {{GenerateDependencyPropertyDefinition(@class, property, version)}}
                 /// <summary>
                 {{(property.Description is { } ? $"/// {property.Description}<br/>" : "")}}
                 /// Default value: {{GenerateDefaultValue(property)}}
@@ -165,19 +143,20 @@ internal class DependencyPropertyGenerator()
                 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
                 [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(DependencyPropertyGenerator)}}", "{{version}}")]
                 [global::System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
-                {{(property.Description is { } ? $"[global::System.ComponentModel.Category(\"{property.Description}\")]" : string.Empty)}}
-                {{(property.Bindable.HasValue ? $"[global::System.ComponentModel.Bindable({property.Bindable.Value.ToBooleanKeyword()})]" : string.Empty)}}
-                {{(property.Browsable.HasValue ? $"[global::System.ComponentModel.Browsable({property.Browsable.Value.ToBooleanKeyword()})]" : string.Empty)}}
-                {{(property.Browsable == false ? "[global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]" : string.Empty)}}
+                {{(property.Category is { } ? $"[global::System.ComponentModel.Category(\"{property.Category}\")]" : string.Empty)}}
                 public {{property.Type}} {{property.Name}}
                 {
                     get { return ({{property.Type}})GetValue({{property.Name}}Property); }
-                    set { SetValue({{property.Name}}Property, value); }
+                    {{identifiers}}set { SetValue({{property.Name}}Property{{key}}, value); }
                 }
 
-                {{GenerateCoerce(@class, property, version)}}
+                [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(DependencyPropertyGenerator)}}", "{{version}}")]
+                static partial void Coerce{{property.Name}}({{property.Type}} value, ref {{property.Type}} result);
 
-                {{GenerateIsValid(@class, property, version)}}
+                [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(DependencyPropertyGenerator)}}", "{{version}}")]
+                static partial void Is{{property.Name}}Valid({{property.Type}} value, ref bool result);
 
                 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
                 [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(DependencyPropertyGenerator)}}", "{{version}}")]
@@ -188,36 +167,116 @@ internal class DependencyPropertyGenerator()
         return code.RemoveBlankLines();
     }
 
-    private static string GenerateIsValid(ClassData @class, DependencyPropertyData property, string version)
+    private static string GenerateDependencyPropertyDefinition(ClassData @class, DependencyPropertyData property, string version)
     {
-        if (!property.Validate)
-            return string.Empty;
+        var defaultValue = !string.IsNullOrEmpty(property.DefaultValueDocumentation)
+            ? property.DefaultValueDocumentation
+            : $"default({WebUtility.HtmlEncode(property.ShortType)})";
+        var identifiers = property.IsReadOnly ? "protected internal" : "public";
+        var readOnly = property.IsReadOnly ? "ReadOnly" : string.Empty;
+        var key = property.IsReadOnly ? "Key" : string.Empty;
+        var definition = !property.IsReadOnly
+            ? string.Empty
+            : $$"""
 
-        var code = $"""
-            [global::System.CodeDom.Compiler.GeneratedCode("{nameof(DependencyPropertyGenerator)}", "{version}")]
-                [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
-                private static partial bool Is{property.Name}Valid({property.Type}? value);
+                    /// <summary>
+                    /// Identifies the <see cref="{{property.Name}}"/> dependency property.<br/>
+                    /// Default value: {{defaultValue}}
+                    /// </summary>
+                    [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+                    [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(DependencyPropertyGenerator)}}", "{{version}}")]
+                    public static readonly global::System.Windows.DependencyProperty {{property.Name}}Property = {{property.Name}}PropertyKey.DependencyProperty;
+                
+                """;
+        var typeMetadata = property.Flags is null ? $$"""
+            new global::System.Windows.PropertyMetadata(
+                        defaultValue: {{GenerateDefaultValue(property)}},
+                        propertyChangedCallback: {{GeneratePropertyChangedCallback(@class, property)}},
+                        coerceValueCallback: {{GenerateCoerceValueCallback(@class, property)}}
+                    )
+            """ : $$"""
+            new global::System.Windows.FrameworkPropertyMetadata(
+                        defaultValue: {{GenerateDefaultValue(property)}},
+                        flags: {{property.Flags}},
+                        propertyChangedCallback: {{GeneratePropertyChangedCallback(@class, property)}},
+                        coerceValueCallback: {{GenerateCoerceValueCallback(@class, property)}},
+                        isAnimationProhibited: false,
+                        defaultUpdateSourceTrigger: {{property.UpdateSourceTrigger}}
+                    )
             """;
+        var code = $$"""
+            /// <summary>
+                /// Identifies the <see cref="{{property.Name}}"/> dependency property.<br/>
+                /// Default value: {{defaultValue}}
+                /// </summary>
+                [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("{{nameof(DependencyPropertyGenerator)}}", "{{version}}")]
+                {{identifiers}} static readonly global::System.Windows.DependencyProperty{{key}} {{property.Name}}Property{{key}} = global::System.Windows.DependencyProperty.Register{{readOnly}}(
+                    name: "{{property.Name}}",
+                    propertyType: typeof({{property.Type}}),
+                    ownerType: typeof({{@class.Type}}),
+                    typeMetadata: {{typeMetadata}},
+                    validateValueCallback: {{GenerateValidateValueCallback(@class, property)}}
+                );
+            {{definition}}
+            """;
+        return code;
+    }
 
+    private static string GenerateValidateValueCallback(ClassData @class, DependencyPropertyData property)
+    {
+        var methodName = $"Is{property.Name}Valid";
+        var isExist = @class.Methods.Any(w => w.Contains(methodName));
+
+        if (!isExist)
+            return "null";
+
+        var code = $$"""
+            static value =>
+                    {
+                        var result = true;
+                        {{methodName}}(({{property.Type}})value, ref result);
+                        return result;
+                    }
+            """;
+        return code;
+    }
+
+    private static string GenerateCoerceValueCallback(ClassData @class, DependencyPropertyData property)
+    {
+        var methodName = $"Coerce{property.Name}";
+        var isExist = @class.Methods.Any(w => w.Contains(methodName));
+
+        if (!isExist)
+            return "null";
+
+        var code = $$"""
+            static (s, value) =>
+                        {
+                            {{property.Type}} result = default;
+                            {{methodName}}(({{property.Type}})value, ref result);
+                            return result;
+                        }
+            """;
         return code;
     }
 
     private static string GeneratePropertyChangedCallback(ClassData @class, DependencyPropertyData property)
     {
         var methodName = $"On{property.Name}Changed";
-        var isChanged = ExistsMethod(@class, $"{methodName}({property.Type}, {property.Type})");
+        var isExist = @class.Methods.Any(w => w.Contains(methodName));
 
-        if (!isChanged)
-            return "propertyChangedCallback: null,";
+        if (!isExist)
+            return "null";
 
         var code = $$"""
-            propertyChangedCallback: static (s, e) =>
-                            {
-                                if (s is not {{@class.Type}} control)
-                                    return;
+            static (s, e) =>
+                        {
+                            if (s is not {{@class.Type}} control)
+                                return;
 
-                                {{(isChanged ? $"control.{methodName}(({property.Type})e.OldValue, ({property.Type})e.NewValue);" : "")}}
-                            },
+                            control.{{methodName}}(({{property.Type}})e.OldValue, ({{property.Type}})e.NewValue);
+                        }
             """;
         return code;
     }

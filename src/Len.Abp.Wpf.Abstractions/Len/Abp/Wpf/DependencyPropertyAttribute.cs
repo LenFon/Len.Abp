@@ -1,33 +1,21 @@
-﻿namespace Len.Abp.Wpf;
+﻿using System.Windows;
+using System.Windows.Data;
+
+namespace Len.Abp.Wpf;
 
 /// <summary>
-/// Attribute to generate a DependencyProperty
+/// Attribute to generate a dependency property.
 /// </summary>
 /// <param name="name">The name of the dependency property</param>
 /// <param name="type">The type of the dependency property</param>
-/// <exception cref="ArgumentNullException">The dependency property name or dependency property type is empty</exception>
+/// <exception cref="ArgumentNullException">The name or type is empty</exception>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public class DependencyPropertyAttribute(string name, Type type) : Attribute
 {
     /// <summary>
-    /// Gets or sets a value indicating whether the property is bindable.
-    /// </summary>
-    public bool Bindable { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the property is browsable in a property browsing control.
-    /// </summary>
-    public bool Browsable { get; set; }
-
-    /// <summary>
     /// Gets or sets the category of the dependency property.
     /// </summary>
     public string? Category { get; set; }
-
-    /// <summary>
-    /// Whether to generate the partial method for CoerceValueCallback.
-    /// </summary>
-    public bool Coerce { get; set; }
 
     /// <summary>
     /// Gets or sets the default value of the dependency property.
@@ -46,6 +34,11 @@ public class DependencyPropertyAttribute(string name, Type type) : Attribute
     public string? Description { get; set; }
 
     /// <summary>
+    /// Gets or sets the flags of the dependency property.
+    /// </summary>
+    public FrameworkPropertyMetadataOptions Flags { get; set; }
+
+    /// <summary>
     /// Register a read-only dependency property.
     /// </summary>
     public bool IsReadOnly { get; set; }
@@ -61,17 +54,17 @@ public class DependencyPropertyAttribute(string name, Type type) : Attribute
     public Type Type { get; } = type ?? throw new ArgumentNullException(nameof(type));
 
     /// <summary>
-    /// Whether to generate the partial method for validateValueCallback.
+    /// Gets or sets the update source trigger of the dependency property.
     /// </summary>
-    public bool Validate { get; set; }
+    public UpdateSourceTrigger UpdateSourceTrigger { get; set; } = UpdateSourceTrigger.Default;
 }
 
 /// <summary>
-/// Attribute to generate a DependencyProperty
+/// Attribute to generate a dependency property.
 /// </summary>
 /// <typeparam name="T">The type of the dependency property</typeparam>
 /// <param name="name">The name of the dependency property</param>
-/// <exception cref="ArgumentNullException">The dependency property name or dependency property type is empty</exception>
+/// <exception cref="ArgumentNullException">The name or type is empty</exception>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public class DependencyPropertyAttribute<T>(string name) : DependencyPropertyAttribute(name, typeof(T))
 {
