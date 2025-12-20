@@ -5,6 +5,9 @@ namespace Len.Abp.Wpf.Extensions;
 
 internal static class DependencyObjectExtensions
 {
-    public static bool HasBinding(this DependencyObject instance, DependencyProperty property) =>
-        BindingOperations.GetBinding(instance, property) != null;
+    extension(DependencyObject dependencyObject)
+    {
+        public bool HasBinding(DependencyProperty property) =>
+            BindingOperations.GetBinding(dependencyObject, property) != null;
+    }
 }

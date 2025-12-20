@@ -1,17 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	
+
 	<Import Project="../../frameworks.props" />
 	<Import Project="../../common.props" />
 	<Import Project="../../configureawait.props" />
 
-	
+
 	<ItemGroup>
 		<PackageReference Include="Volo.Abp.Core" />
-	</ItemGroup>
-
-	
-	<ItemGroup>
-	  <ProjectReference Include="..\Len.Abp.Analyzer\Len.Abp.Analyzer.csproj" />
 	</ItemGroup>
 
 </Project>

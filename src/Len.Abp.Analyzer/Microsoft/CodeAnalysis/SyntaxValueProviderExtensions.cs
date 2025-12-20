@@ -23,13 +23,7 @@ public static class SyntaxValueProviderExtensions
                     node is ClassDeclarationSyntax { AttributeLists.Count: > 0, } or RecordDeclarationSyntax { AttributeLists.Count: > 0, },
                 transform: static (context, _) =>
                     context
-                        .Attributes.Where(w =>
-                        {
-                            var classSyntax = (ClassDeclarationSyntax)context.TargetNode;
-                            var attributeSyntax = classSyntax.TryFindAttributeSyntax(w);
-
-                            return attributeSyntax != null;
-                        })
+                        .Attributes.Where(w => w.GetSyntax() is not null)
                         .Select(s => new ClassContext(
                             SemanticModel: context.SemanticModel,
                             Attributes: [s],

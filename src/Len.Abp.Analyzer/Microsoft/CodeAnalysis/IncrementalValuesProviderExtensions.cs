@@ -1,5 +1,4 @@
 ﻿using Len.Abp.Analyzer;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Microsoft.CodeAnalysis;
 
@@ -143,62 +142,6 @@ public static class IncrementalValuesProviderExtensions
     )
     {
         return source.SelectAndReportExceptions(x => selector(x.Right, x.Left), context, id);
-    }
-
-    /// <summary>
-    /// Selects attributes from the given <see cref="IncrementalValuesProvider{GeneratorAttributeSyntaxContext}"/>,
-    /// </summary>
-    /// <param name="source">
-    /// The source <see cref="IncrementalValuesProvider{GeneratorAttributeSyntaxContext}"/> to select attributes from.
-    /// </param>
-    /// <returns>
-    /// An <see cref="IncrementalValuesProvider{ClassWithAttributesContext}"/> containing the selected attributes
-    /// </returns>
-    public static IncrementalValuesProvider<ClassContext> SelectAttributes(
-        this IncrementalValuesProvider<GeneratorAttributeSyntaxContext> source
-    )
-    {
-        return source.Select(
-            static (context, _) =>
-                new ClassContext(
-                    SemanticModel: context.SemanticModel,
-                    Attributes: context.Attributes,
-                    ClassSyntax: (ClassDeclarationSyntax)context.TargetNode,
-                    ClassSymbol: (INamedTypeSymbol)context.TargetSymbol
-                )
-        );
-    }
-
-    /// <summary>
-    /// Selects each attribute individually from the given <see cref="IncrementalValuesProvider{GeneratorAttributeSyntaxContext}"/>.
-    /// </summary>
-    /// <param name="source">
-    /// The source <see cref="IncrementalValuesProvider{GeneratorAttributeSyntaxContext}"/> to select attributes from.
-    /// </param>
-    /// <returns>
-    /// An <see cref="IncrementalValuesProvider{ClassWithAttributesContext}"/> containing each attribute and its associated class information
-    /// </returns>
-    public static IncrementalValuesProvider<ClassContext> SelectManyAttributes(
-        this IncrementalValuesProvider<GeneratorAttributeSyntaxContext> source
-    )
-    {
-        return source.SelectMany(
-            static (context, _) =>
-                context
-                    .Attributes.Where(w =>
-                    {
-                        var classSyntax = (ClassDeclarationSyntax)context.TargetNode;
-                        var attributeSyntax = classSyntax.TryFindAttributeSyntax(w);
-
-                        return attributeSyntax != null;
-                    })
-                    .Select(s => new ClassContext(
-                        SemanticModel: context.SemanticModel,
-                        Attributes: [s],
-                        ClassSyntax: (ClassDeclarationSyntax)context.TargetNode,
-                        ClassSymbol: (INamedTypeSymbol)context.TargetSymbol
-                    ))
-        );
     }
 
     /// <summary>

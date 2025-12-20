@@ -52,7 +52,7 @@ internal class AttachedDependencyPropertyGenerator()
         public static implicit operator DependencyPropertyData(ClassContext context)
         {
             var attribute = context.Attributes.First();
-            var attributeSyntax = context.ClassSyntax.TryFindAttributeSyntax(attribute);
+            var attributeSyntax = attribute.GetSyntax();
             var name = attribute.ConstructorArguments.ElementAtOrDefault(0).Value?.ToString() ?? string.Empty;
             var typeSymbol =
                 attribute.GetGenericTypeArgument(0) ?? attribute.ConstructorArguments.ElementAtOrDefault(1).Value as ITypeSymbol;

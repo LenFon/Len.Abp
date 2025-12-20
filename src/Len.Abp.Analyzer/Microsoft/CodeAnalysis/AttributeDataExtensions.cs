@@ -21,15 +21,16 @@ public static class AttributeDataExtensions
     {
         attributeSyntax = attributeSyntax ?? throw new ArgumentNullException(nameof(attributeSyntax));
 
-        return attributeSyntax.ArgumentList?.Arguments
-            .FirstOrDefault(x =>
+        return attributeSyntax
+            .ArgumentList?.Arguments.FirstOrDefault(x =>
             {
-                var nameEquals = x.NameEquals?.ToFullString()
-                    .Trim('=', ' ', '\t', '\r', '\n');
+                var nameEquals = x.NameEquals?.ToFullString().Trim('=', ' ', '\t', '\r', '\n');
 
                 return nameEquals == name;
-            })?
-            .Expression
-            .ToFullString();
+            })
+            ?.Expression.ToFullString();
     }
+
+    public static AttributeSyntax? GetSyntax(this AttributeData attributeData, CancellationToken cancellationToken = default) =>
+        attributeData.ApplicationSyntaxReference?.GetSyntax(cancellationToken) as AttributeSyntax;
 }
