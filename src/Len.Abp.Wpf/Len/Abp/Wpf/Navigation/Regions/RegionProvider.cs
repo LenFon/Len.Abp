@@ -2,7 +2,7 @@
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
-internal class RegionProvider : IRegionProvider, ISingletonDependency
+internal sealed class RegionProvider : IRegionProvider, ISingletonDependency
 {
     private readonly List<IRegion> _regions = [];
 

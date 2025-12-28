@@ -1,5 +1,5 @@
-using System.Collections.Specialized;
 using Len.Abp.Wpf.Mvvm;
+using System.Collections.Specialized;
 using Volo.Abp.DependencyInjection;
 
 namespace Len.Abp.Wpf.Navigation.Regions.Behaviors;
@@ -17,10 +17,10 @@ public class RegionMemberLifetimeBehavior(IRegionProvider regionProvider) : IReg
 
     private void ActiveViews_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.Action != NotifyCollectionChangedAction.Remove)
+        if (e.Action != NotifyCollectionChangedAction.Remove || e.OldItems is not { Count: > 0 } oldItems)
             return;
 
-        var inactiveViews = e.OldItems!.Cast<IView>();
+        var inactiveViews = oldItems.Cast<IView>();
         foreach (var inactiveView in inactiveViews)
         {
             if (!ShouldKeepAlive(inactiveView))

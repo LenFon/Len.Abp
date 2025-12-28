@@ -2,7 +2,7 @@
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
-internal class RegionFinder(IRegionProvider regionProvider) : IRegionFinder, ISingletonDependency
+internal sealed class RegionFinder(IRegionProvider regionProvider) : IRegionFinder, ISingletonDependency
 {
     private readonly IRegionProvider _regionProvider = regionProvider;
 

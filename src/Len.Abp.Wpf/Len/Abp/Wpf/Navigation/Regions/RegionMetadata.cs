@@ -2,7 +2,7 @@
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
-internal class RegionMetadata(IView item)
+internal sealed class RegionMetadata(IView item)
 {
     private bool _isActive;
 

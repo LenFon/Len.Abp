@@ -13,12 +13,11 @@ internal class ContentControlRegionAdapter : BasicRegionAdapter<ContentControl>,
     {
         ArgumentNullException.ThrowIfNull(regionTarget, nameof(regionTarget));
 
-        var contentIsSet = regionTarget.Content != null;
-        contentIsSet = contentIsSet || regionTarget.HasBinding(ContentControl.ContentProperty);
+        var contentIsSet = regionTarget.Content != null || regionTarget.HasBinding(ContentControl.ContentProperty);
 
         if (contentIsSet)
         {
-            throw new InvalidOperationException("ContentControl's Content property is not empty.");
+            throw new ArgumentException("ContentControl's Content property is not empty.", nameof(regionTarget));
         }
 
         region.ActiveViews.CollectionChanged += (s, e) =>
@@ -28,9 +27,9 @@ internal class ContentControlRegionAdapter : BasicRegionAdapter<ContentControl>,
 
         region.Views.CollectionChanged += (s, e) =>
         {
-            if (e.Action == NotifyCollectionChangedAction.Add && !region.ActiveViews.Any())
+            if (e.Action == NotifyCollectionChangedAction.Add && region.ActiveViews.Count == 0 && e.NewItems is [IView view, ..])
             {
-                region.Activate((IView)e.NewItems![0]!);
+                region.Activate(view);
             }
         };
     }

@@ -9,7 +9,6 @@
     <Project Path="src/Len.Abp.Analyzer/Len.Abp.Analyzer.csproj" />
     <Project Path="src/Len.Abp.Core/Len.Abp.Core.csproj" />
     <Project Path="src/Len.Abp.Wpf.Abstractions/Len.Abp.Wpf.Abstractions.csproj" />
-    <Project Path="src/Len.Abp.Wpf.Generators/Len.Abp.Wpf.Generators.csproj" />
     <Project Path="src/Len.Abp.Wpf/Len.Abp.Wpf.csproj" />
   </Folder>
   <Folder Name="/test/" />

@@ -2,6 +2,5 @@
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
-public class RegionCreationException(string message, Exception inner) : AbpException(message, inner)
-{
-}
+public class RegionCreationException(string regionName, Exception innerException)
+    : AbpException($"An exception occurred while creating a region with name '{regionName}'.", innerException);

@@ -13,7 +13,7 @@ internal class RegionAdapterFinder(IAbpLazyServiceProvider abpLazyServiceProvide
 
         while (currentType != null)
         {
-            var regionAdapter = _abpLazyServiceProvider.GetRequiredKeyedService<IRegionAdapter>(currentType);
+            var regionAdapter = _abpLazyServiceProvider.GetKeyedService<IRegionAdapter>(currentType);
             if (regionAdapter is not null)
             {
                 return regionAdapter;

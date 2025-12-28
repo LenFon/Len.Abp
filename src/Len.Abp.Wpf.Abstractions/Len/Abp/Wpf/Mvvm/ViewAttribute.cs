@@ -9,3 +9,6 @@ public class ViewAttribute(Type viewModel) : Attribute
 
     public string? ViewName { get; set; }
 }
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+public class ViewAttribute<T>() : ViewAttribute(typeof(T));

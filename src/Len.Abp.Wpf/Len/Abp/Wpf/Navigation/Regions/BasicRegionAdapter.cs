@@ -51,7 +51,7 @@ public abstract class BasicRegionAdapter<T> : IRegionAdapter where T : class
 
         if (regionTarget is not T castedObject)
         {
-            throw new InvalidOperationException($"The region target must be of type {typeof(T).FullName}.");
+            throw new ArgumentException($"The region target must be of type {typeof(T).FullName}.", nameof(regionTarget));
         }
 
         return castedObject;

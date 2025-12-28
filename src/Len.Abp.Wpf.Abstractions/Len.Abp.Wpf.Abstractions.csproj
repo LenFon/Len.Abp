@@ -3,8 +3,8 @@
 	<Import Project="../../configureawait.props" />
 
 	<ItemGroup>
+		<ProjectReference Include="..\Len.Abp.Analyzer.Wpf\Len.Abp.Analyzer.Wpf.csproj" />
 		<ProjectReference Include="..\Len.Abp.Core\Len.Abp.Core.csproj" />
-		<ProjectReference Include="..\Len.Abp.Wpf.Generators\Len.Abp.Wpf.Generators.csproj" />
 	</ItemGroup>
 
 </Project>

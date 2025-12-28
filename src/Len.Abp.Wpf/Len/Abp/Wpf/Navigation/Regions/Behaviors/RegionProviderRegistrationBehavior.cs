@@ -11,9 +11,6 @@ public class RegionProviderRegistrationBehavior(IRegionProvider regionProvider) 
 
     public void Attach()
     {
-        if (Region is not null)
-        {
-            _regionProvider.Add(Region);
-        }
+        _regionProvider.Add(Region);
     }
 }

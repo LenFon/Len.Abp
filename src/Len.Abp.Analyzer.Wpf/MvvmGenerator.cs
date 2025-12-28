@@ -2,7 +2,8 @@
 using Microsoft.CodeAnalysis;
 
 [Generator]
-internal class MvvmGenerator() : BasicGenerator<MvvmGenerator.MvvmData>("Mvvm", "Len.Abp.Wpf.Mvvm.ViewAttribute")
+internal class MvvmGenerator()
+    : BasicGenerator<MvvmGenerator.MvvmData>("Mvvm", "Len.Abp.Wpf.Mvvm.ViewAttribute", "Len.Abp.Wpf.Mvvm.ViewAttribute`1")
 {
     protected override string CreateFileName((ClassData Class, MvvmData Data, string Version) context) => $"{context.Class.FullName}.g.cs";
 
@@ -15,7 +16,11 @@ internal class MvvmGenerator() : BasicGenerator<MvvmGenerator.MvvmData>("Mvvm", 
 
             #nullable enable
             {{GetExposeKeyedServices(context)}}
-            [global::Volo.Abp.DependencyInjection.ExposeServices({{(context.Data.IsShell ? "typeof(global::Len.Abp.Wpf.IShell)," : "")}}typeof({{context.Class.Name}}), typeof(global::Len.Abp.Wpf.Mvvm.IView<{{context.Data.ViewModel}}>), typeof(global::Len.Abp.Wpf.Mvvm.IView<object>))]
+            [global::Volo.Abp.DependencyInjection.ExposeServices({{(
+                context.Data.IsShell ? "typeof(global::Len.Abp.Wpf.IShell)," : ""
+            )}}typeof({{context.Class.Name}}), typeof(global::Len.Abp.Wpf.Mvvm.IView<{{context
+                .Data
+                .ViewModel}}>), typeof(global::Len.Abp.Wpf.Mvvm.IView<object>))]
             partial class {{context.Class.Name}} : {{(context.Data.IsShell ? "global::Len.Abp.Wpf.IShell," : "")}}
                 global::Len.Abp.Wpf.Mvvm.IView<{{context.Data.ViewModel}}>, 
                 global::Volo.Abp.DependencyInjection.ITransientDependency
@@ -23,7 +28,9 @@ internal class MvvmGenerator() : BasicGenerator<MvvmGenerator.MvvmData>("Mvvm", 
                 ///<inheritdoc/>
                 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
                 [global::System.CodeDom.Compiler.GeneratedCodeAttribute("{{nameof(MvvmGenerator)}}", "{{context.Version}}")]
-                public required {{context.Data.ViewModel}} ViewModel { get => ({{context.Data.ViewModel}})DataContext; init => DataContext = value; }
+                public required {{context.Data.ViewModel}} ViewModel { get => ({{context
+                .Data
+                .ViewModel}})DataContext; init => DataContext = value; }
                     
                 ///<inheritdoc/>
                 [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]
@@ -49,7 +56,9 @@ internal class MvvmGenerator() : BasicGenerator<MvvmGenerator.MvvmData>("Mvvm", 
         return $$"""
 
             [global::Volo.Abp.DependencyInjection.ExposeKeyedService<global::Len.Abp.Wpf.Mvvm.IView>("{{context.Data.ViewName}}")]
-            [global::Volo.Abp.DependencyInjection.ExposeKeyedService<global::Len.Abp.Wpf.Mvvm.IView<{{context.Data.ViewModel}}>>("{{context.Data.ViewName}}")]
+            [global::Volo.Abp.DependencyInjection.ExposeKeyedService<global::Len.Abp.Wpf.Mvvm.IView<{{context.Data.ViewModel}}>>("{{context
+                .Data
+                .ViewName}}")]
             [global::Volo.Abp.DependencyInjection.ExposeKeyedService<{{context.Class.Name}}>("{{context.Data.ViewName}}")]
             """;
     }
@@ -80,7 +89,9 @@ internal class MvvmGenerator() : BasicGenerator<MvvmGenerator.MvvmData>("Mvvm", 
                 isShell = attribute.GetNamedArgument("IsShell").To<bool>();
             }
 
-            var viewModel = attribute.ConstructorArguments.ElementAtOrDefault(0).Value?.ToString() ?? string.Empty;
+            var typeSymbol =
+                attribute.GetGenericTypeArgument(0) ?? attribute.ConstructorArguments.ElementAtOrDefault(0).Value as ITypeSymbol;
+            var viewModel = typeSymbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? string.Empty;
             var viewName = attribute.GetNamedArgument("ViewName").Value?.ToString() ?? string.Empty;
             return new MvvmData(isShell, viewModel, viewName);
         }

@@ -1,11 +1,10 @@
-﻿using System.Collections.ObjectModel;
-using System.Windows;
+﻿using System.Windows;
 
 namespace Volo.Abp.Modularity;
 
 public abstract class AbpWpfModule : AbpModule
 {
-    public virtual void ConfigureResources(Collection<ResourceDictionary> resources)
+    public virtual void ConfigureResources(ICollection<ResourceDictionary> resources)
     {
     }
 }

@@ -7,23 +7,21 @@
 		<IsRoslynComponent>true</IsRoslynComponent>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-		<Version>2.0.0</Version>
 	</PropertyGroup>
-
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+	</PropertyGroup>
 	<ItemGroup>
-	  <!--<PackageReference Include="Microsoft.CodeAnalysis.CSharp" />-->
-	  <PackageReference Include="PolySharp">
-	    <PrivateAssets>all</PrivateAssets>
-	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	  </PackageReference>
+		<PackageReference Include="PolySharp">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
 	</ItemGroup>
-	<ItemGroup Condition=" '$(TargetFramework)' == '' ">
-		<!-- Package the generator in the analyzer directory of the nuget package -->
+	<ItemGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 		<None Include="$(OutputPath)\Len.Abp.Analyzer.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-		<!--<None Include="$(OutputPath)\zh-CN\$(AssemblyName).resources.dll" Pack="true" PackagePath="analyzers/dotnet/cs/zh-CN" Visible="false" />-->
 	</ItemGroup>
 	<ItemGroup>
-	  <ProjectReference Include="..\Len.Abp.Analyzer\Len.Abp.Analyzer.csproj" />
+		<ProjectReference Include="..\Len.Abp.Analyzer\Len.Abp.Analyzer.csproj"  PrivateAssets="All"/>
 	</ItemGroup>
 </Project>

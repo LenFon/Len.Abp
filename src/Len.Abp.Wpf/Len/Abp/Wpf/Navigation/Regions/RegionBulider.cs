@@ -1,16 +1,16 @@
-﻿using Len.Abp.Wpf.Mvvm;
+﻿using Len.Abp.Wpf.Extensions;
+using Len.Abp.Wpf.Mvvm;
 using System.Windows;
-using System.Windows.Media;
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
-internal class RegionBulider(IRegionAdapterFinder regionAdapterFinder) : IRegionBulider
+internal sealed class RegionBulider(IRegionAdapterFinder regionAdapterFinder) : IRegionBulider
 {
     private readonly IRegionAdapterFinder _regionAdapterFinder = regionAdapterFinder;
     private WeakReference? _elementWeakReference;
     private bool _regionCreated;
 
-    private DependencyObject? TargetElement => _elementWeakReference is not null ? _elementWeakReference.Target as DependencyObject : null;
+    private DependencyObject? TargetElement => _elementWeakReference?.Target as DependencyObject;
 
     public void Bulid(DependencyObject element)
     {
@@ -21,19 +21,13 @@ internal class RegionBulider(IRegionAdapterFinder regionAdapterFinder) : IRegion
 
     private static string GetViewName(DependencyObject targetElement)
     {
-        var dp = targetElement;
+        var view = (targetElement as IView) ?? targetElement.GetParent<IView>();
 
-        while (dp is not null)
-        {
-            if (dp is IView view)
-            {
-                return view.ViewName;
-            }
-
-            dp = VisualTreeHelper.GetParent(dp);
-        }
-
-        throw new InvalidOperationException("Unable to determine the view name for the target element. Ensure that the target element is part of a view.");
+        return view is null
+            ? throw new ArgumentException(
+                "Unable to determine the view name for the target element. Ensure that the target element is part of a view."
+            )
+            : view.ViewName;
     }
 
     private void CreateRegion(DependencyObject targetElement, string regionName)
@@ -46,7 +40,7 @@ internal class RegionBulider(IRegionAdapterFinder regionAdapterFinder) : IRegion
         }
         catch (Exception ex)
         {
-            throw new RegionCreationException($"An exception occurred while creating a region with name '{regionName}'. The exception was: {ex}. ", ex);
+            throw new RegionCreationException(regionName, ex);
         }
     }
 
@@ -60,32 +54,27 @@ internal class RegionBulider(IRegionAdapterFinder regionAdapterFinder) : IRegion
     {
         var targetElement = TargetElement;
 
-        if (targetElement is null) return;
+        if (targetElement is null || _regionCreated || !targetElement.CheckAccess())
+            return;
 
-        if (targetElement.CheckAccess())
-        {
-            if (!_regionCreated)
-            {
-                var regionName = Navigation.Region.GetName(targetElement);
-                CreateRegion(targetElement, regionName);
-                _regionCreated = true;
-            }
-        }
+        var regionName = Navigation.Region.GetName(targetElement);
+        CreateRegion(targetElement, regionName);
+        _regionCreated = true;
     }
 
     private void UnWireTargetElement()
     {
-        if (TargetElement is FrameworkElement element)
-        {
-            element.Loaded -= OnElementLoaded;
-        }
+        if (TargetElement is not FrameworkElement element)
+            return;
+
+        element.Loaded -= OnElementLoaded;
     }
 
     private void WireUpTargetElement()
     {
-        if (TargetElement is FrameworkElement element)
-        {
-            element.Loaded += OnElementLoaded;
-        }
+        if (TargetElement is not FrameworkElement element)
+            return;
+
+        element.Loaded += OnElementLoaded;
     }
 }

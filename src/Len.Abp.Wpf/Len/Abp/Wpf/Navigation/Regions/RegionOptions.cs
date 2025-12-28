@@ -1,6 +1,6 @@
 ﻿namespace Len.Abp.Wpf.Navigation.Regions;
 
-public class RegionOptions
+public sealed class RegionOptions
 {
     private readonly List<string> _behaviorKeys = [];
     public IEnumerable<string> BehaviorKeys => _behaviorKeys;

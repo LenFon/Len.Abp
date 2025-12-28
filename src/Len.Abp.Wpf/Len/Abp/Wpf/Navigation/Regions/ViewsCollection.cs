@@ -5,7 +5,7 @@ using System.Collections.Specialized;
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
-internal class ViewsCollection : IViewsCollection
+internal sealed class ViewsCollection : IViewsCollection
 {
     private readonly Predicate<RegionMetadata> _filter;
     private readonly ObservableCollection<RegionMetadata> _items;
@@ -21,6 +21,8 @@ internal class ViewsCollection : IViewsCollection
     }
 
     public event NotifyCollectionChangedEventHandler? CollectionChanged;
+
+    public int Count => _filteredItems.Count;
 
     public bool Contains(IView value) => _filteredItems.Contains(value);
 
