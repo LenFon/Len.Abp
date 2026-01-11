@@ -53,18 +53,16 @@ internal sealed class ViewsCollection : IViewsCollection
 
     private void NotifyAdd(IList items, int newStartingIndex)
     {
-        if (items.Count > 0)
-        {
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, items, newStartingIndex));
-        }
+        if (items.Count <= 0) return;
+
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, items, newStartingIndex));
     }
 
     private void NotifyRemove(IList items, int originalIndex)
     {
-        if (items.Count > 0)
-        {
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, items, originalIndex));
-        }
+        if (items.Count <= 0) return;
+
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, items, originalIndex));
     }
 
     private void NotifyReset()
@@ -128,12 +126,11 @@ internal sealed class ViewsCollection : IViewsCollection
 
         if (_filter(itemMetadata))
         {
-            if (!monitorInfo.IsInList)
-            {
-                monitorInfo.IsInList = true;
-                UpdateFilteredItemsList();
-                NotifyAdd(itemMetadata.Item);
-            }
+            if (monitorInfo.IsInList) return;
+
+            monitorInfo.IsInList = true;
+            UpdateFilteredItemsList();
+            NotifyAdd(itemMetadata.Item);
         }
         else
         {

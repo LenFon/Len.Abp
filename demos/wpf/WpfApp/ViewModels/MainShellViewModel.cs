@@ -10,12 +10,12 @@ public partial class MainShellViewModel : ObservableObject, IScopedDependency
 {
     private bool _state = false;
 
-    public IAbpLazyServiceProvider LazyServiceProvider { get; set; } = default!;
+    public required IAbpLazyServiceProvider AbpLazyServiceProvider { get; init; }
 
     [ObservableProperty]
     public partial string Title { get; set; } = "Main Shell";
 
-    protected INavigationService NavigationService => LazyServiceProvider.LazyGetRequiredService<INavigationService>();
+    protected INavigationService NavigationService => AbpLazyServiceProvider.LazyGetRequiredService<INavigationService>();
 
     [RelayCommand]
     private async Task ChangeTitleAsync()

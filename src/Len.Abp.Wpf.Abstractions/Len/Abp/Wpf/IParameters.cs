@@ -29,46 +29,14 @@ file class Parameters : IParameters
 
     public Parameters(string? query = null)
     {
-        if (query.IsNullOrWhiteSpace())
+        var queries = QueryHelpers.ParseNullableQuery(query);
+
+        if (queries is null)
             return;
 
-        var length = query.Length;
-        for (var i = (query[0] == '?') ? 1 : 0; i < length; i++)
+        foreach (var item in queries)
         {
-            var startIndex = i;
-            var endIndex = -1;
-
-            while (i < length)
-            {
-                char ch = query[i];
-                if (ch == '=')
-                {
-                    if (endIndex < 0)
-                    {
-                        endIndex = i;
-                    }
-                }
-                else if (ch == '&')
-                {
-                    break;
-                }
-                i++;
-            }
-
-            string? key = null;
-            string value;
-            if (endIndex >= 0)
-            {
-                key = query[startIndex..endIndex];
-                value = query[(endIndex + 1)..((i - endIndex) - 1)];
-            }
-            else
-            {
-                value = query[startIndex..i];
-            }
-
-            if (key != null)
-                Add(Uri.UnescapeDataString(key), Uri.UnescapeDataString(value));
+            Add(item.Key, item.Value);
         }
     }
 

@@ -9,14 +9,14 @@ namespace WpfApp.ViewModels;
 
 public partial class DemoViewModel : ObservableObject, INavigationAware, ITransientDependency, IRegionMemberLifetime
 {
-    public bool KeepAlive => false;
+    public required IAbpLazyServiceProvider AbpLazyServiceProvider { get; init; }
 
-    public IAbpLazyServiceProvider LazyServiceProvider { get; set; } = default!;
+    public bool KeepAlive => false;
 
     [ObservableProperty]
     public partial string Message { get; set; } = "Hello, World!";
 
-    protected INavigationService NavigationService => LazyServiceProvider.LazyGetRequiredService<INavigationService>();
+    protected INavigationService NavigationService => AbpLazyServiceProvider.LazyGetRequiredService<INavigationService>();
 
     public Task<bool> IsNavigationTargetAsync(INavigationContext navigationContext) => Task.FromResult(true);
 

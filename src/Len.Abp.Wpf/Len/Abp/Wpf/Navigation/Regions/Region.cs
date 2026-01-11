@@ -1,5 +1,6 @@
 ﻿using Len.Abp.Wpf.Mvvm;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
@@ -60,17 +61,7 @@ public class Region : IRegion
         }
     }
 
-    public IView? GetView(string viewName)
-    {
-        if (viewName.IsNullOrEmpty())
-        {
-            throw new ArgumentException("View name cannot be null or empty.", nameof(viewName));
-        }
-
-        var metadata = _metadata.FirstOrDefault(x => x.Item.ViewName == viewName);
-
-        return metadata?.Item;
-    }
+    public IView? GetView(string viewName) => _metadata.FirstOrDefault(x => x.Item.ViewName == viewName)?.Item;
 
     public void Remove(IView view)
     {
@@ -87,9 +78,9 @@ public class Region : IRegion
         }
     }
 
+    [return: NotNull]
     private RegionMetadata GetMetadataOrThrow(IView view)
     {
-        ArgumentNullException.ThrowIfNull(view, nameof(view));
         var metadata =
             _metadata.FirstOrDefault(x => x.Item == view)
             ?? throw new ArgumentException($"The region does not contain the specified view .");

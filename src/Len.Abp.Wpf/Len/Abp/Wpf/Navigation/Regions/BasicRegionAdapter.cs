@@ -4,9 +4,10 @@ using Volo.Abp.DependencyInjection;
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
-public abstract class BasicRegionAdapter<T> : IRegionAdapter where T : class
+public abstract class BasicRegionAdapter<T> : IRegionAdapter
+    where T : class
 {
-    public IAbpLazyServiceProvider AbpLazyServiceProvider { get; set; } = default!;
+    public required IAbpLazyServiceProvider AbpLazyServiceProvider { get; init; }
 
     protected RegionOptions Options => AbpLazyServiceProvider.LazyGetRequiredService<IOptions<RegionOptions>>().Value;
 
