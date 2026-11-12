@@ -99,8 +99,11 @@ jobs:
     needs: pack
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: windows-latest
-    # 需要仓库配置 NUGET_API_KEY 密钥；未配置时该任务会被跳过
+    # 需要仓库配置 NUGET_API_KEY 密钥；未配置时推送步骤会被跳过
     environment: nuget
+    # secrets 上下文不能出现在 step 级 if 中，先提升到 job 级 env 再判断
+    env:
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
     steps:
       - name: 下载 NuGet 包
@@ -115,9 +118,9 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: 推送到 NuGet.org
-        if: ${{ secrets.NUGET_API_KEY != '' }}
+        if: env.NUGET_API_KEY != ''
         run: >
           dotnet nuget push ./artifacts/*.nupkg
-          --api-key ${{ secrets.NUGET_API_KEY }}
+          --api-key ${{ env.NUGET_API_KEY }}
           --source https://api.nuget.org/v3/index.json
           --skip-duplicate
