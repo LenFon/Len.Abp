@@ -7,7 +7,8 @@ namespace Len.Abp.Wpf.Navigation.Regions;
 /// </summary>
 /// <param name="name">区域名称。</param>
 /// <param name="owner">区域所属的视图名称。</param>
-public class SingleActiveRegion(string name, string owner) : Region(name, owner)
+/// <param name="ownerView">创建该区域的视图实例。</param>
+public class SingleActiveRegion(string name, string owner, IView? ownerView = null) : Region(name, owner, ownerView)
 {
     /// <inheritdoc/>
     public override void Activate(IView view)

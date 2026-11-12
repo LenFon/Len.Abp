@@ -138,16 +138,18 @@ public class ContentControlRegionAdapterTests
     }
 
     /// <summary>
-    /// 视图名称为 null 时抛出异常。
+    /// 所属视图为 null 时抛出异常。
     /// </summary>
     [Fact]
-    public void Initialize_NullViewName_Throws()
+    public void Initialize_NullOwnerView_Throws()
     {
         Sta.Run(() =>
         {
             var adapter = CreateAdapter();
 
-            Assert.Throws<ArgumentNullException>(() => Initialize(adapter, new ContentControl(), "MainRegion", null!));
+            Assert.Throws<ArgumentNullException>(
+                () => ((IRegionAdapter)adapter).Initialize(new ContentControl(), "MainRegion", null!)
+            );
         });
     }
 
@@ -173,5 +175,5 @@ public class ContentControlRegionAdapterTests
     /// <see cref="IRegionAdapter.Initialize"/> 是显式接口实现，测试中通过接口调用。
     /// </summary>
     private static IRegion Initialize(IRegionAdapter adapter, object target, string regionName, string viewName) =>
-        adapter.Initialize(target, regionName, viewName);
+        adapter.Initialize(target, regionName, new FakeView(viewName));
 }

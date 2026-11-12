@@ -8,8 +8,8 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewmodels="clr-namespace:WpfApp.ViewModels"
     Title="{Binding Title}"
-    Width="800"
-    Height="450"
+    Width="1000"
+    Height="700"
     d:DataContext="{d:DesignInstance Type=viewmodels:MainShellViewModel}"
     FontFamily="{DynamicResource MahApps.Fonts.Family.Window.Title}"
     GlowBrush="{DynamicResource MahApps.Brushes.Accent}"
@@ -18,14 +18,84 @@
     WindowTransitionsEnabled="False"
     mc:Ignorable="d">
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <StackPanel Orientation="Horizontal">
-            <TextBlock Margin="0,0,0,30" Text="{Binding Title}" />
-            <Button Command="{Binding ChangeTitleCommand}" Content="Test Button" />
-        </StackPanel>
-        <ContentControl Grid.Row="1" len:Region.Name="MainRegion" />
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!--  导航栏  -->
+        <Border
+            Grid.Column="0"
+            Background="#F5F5F7"
+            BorderBrush="#E0E0E0"
+            BorderThickness="0,0,1,0">
+            <StackPanel Margin="12">
+                <TextBlock
+                    Margin="4,4,0,12"
+                    FontSize="16"
+                    FontWeight="Bold"
+                    Text="生成器示例" />
+
+                <Button
+                    Margin="0,0,0,6"
+                    HorizontalContentAlignment="Left"
+                    Command="{Binding ShowGalleryCommand}"
+                    Content="控件画廊" />
+                <Button
+                    Margin="0,0,0,6"
+                    HorizontalContentAlignment="Left"
+                    Command="{Binding ShowSingletonCommand}"
+                    Content="单例视图" />
+                <Button
+                    Margin="0,0,0,6"
+                    HorizontalContentAlignment="Left"
+                    Command="{Binding ShowTransientCommand}"
+                    Content="瞬态视图" />
+                <Button
+                    Margin="0,0,0,6"
+                    HorizontalContentAlignment="Left"
+                    Command="{Binding ShowScopedCommand}"
+                    Content="作用域视图" />
+                <Button
+                    Margin="0,0,0,6"
+                    HorizontalContentAlignment="Left"
+                    Command="{Binding ShowNestedRegionCommand}"
+                    Content="嵌套区域（8 层）" />
+                <Button
+                    Margin="0,0,0,6"
+                    HorizontalContentAlignment="Left"
+                    Command="{Binding ShowDemoCommand}"
+                    Content="导航示例" />
+                <Button
+                    Margin="0,0,0,6"
+                    HorizontalContentAlignment="Left"
+                    Command="{Binding ShowLoginCommand}"
+                    Content="登录界面" />
+
+                <Separator Margin="0,12,0,12" />
+
+                <TextBlock
+                    Margin="4,0,0,4"
+                    FontSize="12"
+                    Foreground="#888888"
+                    Text="当前视图" />
+                <TextBlock
+                    Margin="4,0,0,8"
+                    FontWeight="SemiBold"
+                    Text="{Binding CurrentViewName}" />
+                <TextBlock
+                    Margin="4,0,0,0"
+                    FontSize="12"
+                    Foreground="#888888"
+                    Text="{Binding NavigationStatus}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <!--  区域宿主  -->
+        <ContentControl
+            x:Name="RegionHost"
+            Grid.Column="1"
+            len:Region.Name="MainRegion" />
     </Grid>
 </controls:MetroWindow>

@@ -199,6 +199,49 @@ public class NavigationServiceTests
     }
 
     /// <summary>
+    /// 每次导航都触发回调：离开的视图收到 OnNavigatedFrom，进入的视图收到 OnNavigatedTo。
+    /// </summary>
+    /// <remarks>
+    /// 视图被保活复用时，回调仍按次触发，视图模型可以据此刷新数据，
+    /// 不能因为实例复用就跳过通知。
+    /// </remarks>
+    [Fact]
+    public async Task NavigateAsync_RepeatedNavigation_NotifiesEveryTime()
+    {
+        var firstViewModel = new NavigationAwareViewModel();
+        var secondViewModel = new NavigationAwareViewModel();
+        var first = new FakeView("first", firstViewModel);
+        var second = new FakeView("second", secondViewModel);
+        var (service, _) = CreateService(first, second);
+
+        await service.NavigateAsync("MainRegion", "first", IParameters.Create());
+        await service.NavigateAsync("MainRegion", "second", IParameters.Create());
+        await service.NavigateAsync("MainRegion", "first", IParameters.Create());
+
+        Assert.Equal(2, firstViewModel.NavigatedToCount);
+        Assert.Equal(1, firstViewModel.NavigatedFromCount);
+        Assert.Equal(1, secondViewModel.NavigatedToCount);
+        Assert.Equal(1, secondViewModel.NavigatedFromCount);
+    }
+
+    /// <summary>
+    /// 导航到当前已激活的同一视图时，仍会先触发 OnNavigatedFrom 再触发 OnNavigatedTo。
+    /// </summary>
+    [Fact]
+    public async Task NavigateAsync_SameViewTwice_NotifiesFromThenTo()
+    {
+        var viewModel = new NavigationAwareViewModel();
+        var view = new FakeView("demo", viewModel);
+        var (service, _) = CreateService(view);
+
+        await service.NavigateAsync("MainRegion", "demo", IParameters.Create());
+        await service.NavigateAsync("MainRegion", "demo", IParameters.Create());
+
+        Assert.Equal(2, viewModel.NavigatedToCount);
+        Assert.Equal(1, viewModel.NavigatedFromCount);
+    }
+
+    /// <summary>
     /// 视图模型的 OnNavigatedToAsync 抛异常时返回带异常的结果。
     /// </summary>
     [Fact]
@@ -246,7 +289,8 @@ public class NavigationServiceTests
 
     private static (NavigationService Service, RegionImpl Region) CreateService(params FakeView[] views)
     {
-        var region = new RegionImpl("MainRegion", "MainView");
+        // 与 ContentControlRegionAdapter 保持一致：内容控件区域同一时刻只有一个活动视图。
+        var region = new SingleActiveRegion("MainRegion", "MainView");
         var provider = new RegionProvider();
         provider.Add(region);
 

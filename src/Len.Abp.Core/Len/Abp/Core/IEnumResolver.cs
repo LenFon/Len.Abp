@@ -3,7 +3,7 @@
 namespace Len.Abp.Core;
 
 /// <summary>
-/// 枚举解析器。
+/// 枚举解析器，提供枚举项与名称/值对的互查。
 /// </summary>
 /// <typeparam name="TEnum">枚举类型。</typeparam>
 public interface IEnumResolver<TEnum> where TEnum : Enum

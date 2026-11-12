@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/demos/" />
   <Folder Name="/demos/wpf/">
+    <Project Path="demos/wpf/WpfApp.Controls/WpfApp.Controls.csproj" />
     <Project Path="demos/wpf/WpfApp.Host/WpfApp.Host.csproj" />
     <Project Path="demos/wpf/WpfApp/WpfApp.csproj" />
   </Folder>

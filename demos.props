@@ -6,5 +6,8 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<!-- 示例项目不参与打包发布 -->
 		<IsPackable>false</IsPackable>
+		<!-- demos 不导入 common.props，需单独启用代码风格检查，否则 .editorconfig 里的规则不会在构建中生效 -->
+		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+		<RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
 	</PropertyGroup>
 </Project>

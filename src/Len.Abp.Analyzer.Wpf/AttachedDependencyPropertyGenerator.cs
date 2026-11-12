@@ -15,7 +15,8 @@ internal class AttachedDependencyPropertyGenerator()
     /// <inheritdoc/>
     protected override string GenerateMemberDeclarations(ClassData @class, DependencyPropertyData property, string version)
     {
-        var identifiers = property.IsReadOnly ? "protected" : "public";
+        // 静态类不能包含保护成员（CS1057），只读附加属性在静态宿主上退化为 private。
+        var identifiers = property.IsReadOnly ? (@class.IsStatic ? "private" : "protected") : "public";
         var key = property.IsReadOnly ? "Key" : string.Empty;
         var documentation = GenerateDocumentation(property, version);
 

@@ -45,7 +45,7 @@ public class RegionRegistrationEndToEndTests
         Sta.Run(() =>
         {
             var adapter = adapterFinder.FindByControlType(typeof(System.Windows.Controls.ContentControl));
-            adapter.Initialize(new System.Windows.Controls.ContentControl(), "MainRegion", "MainView");
+            adapter.Initialize(new System.Windows.Controls.ContentControl(), "MainRegion", new FakeView("MainView"));
         });
 
         Assert.Single(regionProvider.Regions);

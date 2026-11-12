@@ -25,24 +25,19 @@ internal sealed class RegionBuilder(IRegionAdapterFinder regionAdapterFinder) : 
         }
     }
 
-    private static string GetViewName(DependencyObject targetElement)
-    {
-        var view = (targetElement as IView) ?? targetElement.GetParent<IView>();
-
-        return view is null
-            ? throw new ArgumentException("无法确定目标元素的视图名称。请确认该元素位于某个视图内。")
-            : view.ViewName;
-    }
+    private static IView GetOwnerView(DependencyObject targetElement) =>
+        (targetElement as IView) ?? targetElement.GetParent<IView>()
+        ?? throw new ArgumentException("无法确定目标元素的视图名称。请确认该元素位于某个视图内。");
 
     private void CreateRegion(DependencyObject targetElement, string regionName)
     {
         try
         {
             var regionAdapter = _regionAdapterFinder.FindByControlType(targetElement.GetType());
-            var viewName = GetViewName(targetElement);
+            var ownerView = GetOwnerView(targetElement);
 
             // 创建出的区域通过 RegionProviderRegistrationBehavior 自行完成注册。
-            regionAdapter.Initialize(targetElement, regionName, viewName);
+            regionAdapter.Initialize(targetElement, regionName, ownerView);
         }
         catch (Exception ex)
         {

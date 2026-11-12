@@ -4,18 +4,48 @@ using System.Reflection;
 
 namespace Len.Abp.Wpf;
 
+/// <summary>
+/// 导航参数集合，按键存取异构值，并支持从查询字符串解析。
+/// </summary>
 public interface IParameters : IEnumerable<KeyValuePair<string, object>>
 {
+    /// <summary>
+    /// 获取参数项的数量。
+    /// </summary>
     int Count { get; }
 
+    /// <summary>
+    /// 获取所有参数的键。
+    /// </summary>
     IEnumerable<string> Keys { get; }
 
+    /// <summary>
+    /// 获取指定键的第一个值；键不存在时返回 <see langword="null"/>。
+    /// </summary>
+    /// <param name="key">参数键。</param>
+    /// <returns>该键对应的值。</returns>
     object? this[string key] { get; }
 
+    /// <summary>
+    /// 创建参数集合。
+    /// </summary>
+    /// <param name="query">可选的查询字符串，可带或不带前导的 '?'。</param>
+    /// <returns>新的参数集合。</returns>
     static IParameters Create(string? query = null) => new Parameters(query);
 
+    /// <summary>
+    /// 添加一个参数项。
+    /// </summary>
+    /// <param name="key">参数键。</param>
+    /// <param name="value">参数值。</param>
+    /// <returns>当前集合，便于链式调用。</returns>
     IParameters Add(string key, object value);
 
+    /// <summary>
+    /// 判断是否存在指定键。
+    /// </summary>
+    /// <param name="key">参数键。</param>
+    /// <returns>存在该键时返回 <see langword="true"/>。</returns>
     bool ContainsKey(string key);
 
     /// <summary>

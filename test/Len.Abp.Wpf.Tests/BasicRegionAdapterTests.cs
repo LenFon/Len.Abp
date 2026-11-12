@@ -1,3 +1,4 @@
+using Len.Abp.Wpf.Mvvm;
 using Len.Abp.Wpf.Navigation.Regions;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.DependencyInjection;
@@ -22,7 +23,7 @@ public class BasicRegionAdapterTests
             var behavior = new RecordingBehavior();
             var adapter = CreateAdapter(behavior);
 
-            var region = ((IRegionAdapter)adapter).Initialize(new ContentControl(), "MainRegion", "MainView");
+            var region = ((IRegionAdapter)adapter).Initialize(new ContentControl(), "MainRegion", new FakeView("MainView"));
 
             Assert.True(region.Behaviors.ContainsKey("test"));
             Assert.Same(behavior, region.Behaviors["test"]);
@@ -40,11 +41,11 @@ public class BasicRegionAdapterTests
             var behavior = new RecordingBehavior();
             var adapter = CreateAdapter(behavior);
 
-            var region = ((IRegionAdapter)adapter).Initialize(new ContentControl(), "MainRegion", "MainView");
+            var region = ((IRegionAdapter)adapter).Initialize(new ContentControl(), "MainRegion", new FakeView("MainView"));
             var first = region.Behaviors["test"];
 
             // 再次初始化同一适配器，验证 ContainsKey 分支。
-            var second = ((IRegionAdapter)adapter).Initialize(new ContentControl(), "MainRegion2", "MainView2");
+            var second = ((IRegionAdapter)adapter).Initialize(new ContentControl(), "MainRegion2", new FakeView("MainView2"));
 
             Assert.Same(first, region.Behaviors["test"]);
             Assert.True(second.Behaviors.ContainsKey("test"));
@@ -61,7 +62,7 @@ public class BasicRegionAdapterTests
         {
             var adapter = CreateAdapter();
 
-            var region = ((IRegionAdapter)adapter).Initialize(new ContentControl(), "MainRegion", "MainView");
+            var region = ((IRegionAdapter)adapter).Initialize(new ContentControl(), "MainRegion", new FakeView("MainView"));
 
             Assert.True(adapter.AdaptCalled);
             Assert.True(adapter.AttachBehaviorsCalled);
@@ -79,7 +80,7 @@ public class BasicRegionAdapterTests
         var adapter = CreateAdapter();
 
         Assert.Throws<ArgumentNullException>(
-            () => ((IRegionAdapter)adapter).Initialize(null!, "MainRegion", "MainView")
+            () => ((IRegionAdapter)adapter).Initialize(null!, "MainRegion", new FakeView("MainView"))
         );
     }
 
@@ -94,7 +95,7 @@ public class BasicRegionAdapterTests
             var adapter = CreateAdapter();
 
             Assert.Throws<ArgumentNullException>(
-                () => ((IRegionAdapter)adapter).Initialize(new ContentControl(), null!, "MainView")
+                () => ((IRegionAdapter)adapter).Initialize(new ContentControl(), null!, new FakeView("MainView"))
             );
         });
     }
@@ -124,7 +125,7 @@ public class BasicRegionAdapterTests
         var adapter = CreateAdapter();
 
         var ex = Assert.Throws<ArgumentException>(
-            () => ((IRegionAdapter)adapter).Initialize(new object(), "MainRegion", "MainView")
+            () => ((IRegionAdapter)adapter).Initialize(new object(), "MainRegion", new FakeView("MainView"))
         );
 
         Assert.Equal("regionTarget", ex.ParamName);
@@ -162,7 +163,8 @@ public class BasicRegionAdapterTests
 
         protected override void AttachBehaviors(IRegion region, ContentControl regionTarget) => AttachBehaviorsCalled = true;
 
-        protected override IRegion CreateRegion(string regionName, string viewName) => new Region(regionName, viewName);
+        protected override IRegion CreateRegion(string regionName, IView ownerView) =>
+            new Region(regionName, ownerView.ViewName, ownerView);
     }
 
     private sealed class RecordingBehavior : IRegionBehavior

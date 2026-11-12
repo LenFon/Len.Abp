@@ -1,4 +1,5 @@
-﻿using Volo.Abp.DependencyInjection;
+﻿using Len.Abp.Wpf.Mvvm;
+using Volo.Abp.DependencyInjection;
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
@@ -19,8 +20,24 @@ internal sealed class RegionProvider : IRegionProvider, ISingletonDependency
     }
 
     /// <inheritdoc/>
-    public void RemoveByViewName(string viewName)
+    public IReadOnlyList<IView> RemoveOwnedRegions(IView ownerView)
     {
-        _regions.RemoveAll(region => region.Owner == viewName);
+        ArgumentNullException.ThrowIfNull(ownerView);
+
+        var owned = _regions.Where(region => ReferenceEquals(region.OwnerView, ownerView)).ToArray();
+
+        if (owned.Length == 0)
+        {
+            return [];
+        }
+
+        // 先整体摘除再收集视图：区域本身即将不可达，无需逐个 Remove，
+        // 也就不会触发内层区域的保活行为，避免拆除过程中重入。
+        foreach (var region in owned)
+        {
+            _regions.Remove(region);
+        }
+
+        return [.. owned.SelectMany(region => region.Views)];
     }
 }

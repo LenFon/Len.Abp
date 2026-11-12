@@ -244,7 +244,8 @@ internal abstract class DependencyPropertyGeneratorBase(string id, params HashSe
         var defaultValue = !string.IsNullOrEmpty(property.DefaultValueDocumentation)
             ? property.DefaultValueDocumentation
             : $"default({WebUtility.HtmlEncode(property.ShortType)})";
-        var identifiers = property.IsReadOnly ? "protected internal" : "public";
+        // 静态类不能包含保护成员（CS1057），只读属性的键字段在静态宿主上退化为 public。
+        var identifiers = property.IsReadOnly ? (@class.IsStatic ? "public" : "protected internal") : "public";
         var readOnly = property.IsReadOnly ? "ReadOnly" : string.Empty;
         var key = property.IsReadOnly ? "Key" : string.Empty;
         var definition = !property.IsReadOnly
@@ -261,6 +262,11 @@ internal abstract class DependencyPropertyGeneratorBase(string id, params HashSe
         // UpdateSourceTrigger 只能通过 FrameworkPropertyMetadata 生效，
         // 因此显式指定它时也必须走该分支，否则设置会被静默丢弃。
         var useFrameworkMetadata = property.Flags is not null || property.HasUpdateSourceTrigger;
+        // 显式传入 UpdateSourceTrigger.Default 会让 WPF 抛“这样会创建循环定义”，
+        // 因此只有用户真的指定了非 Default 值时才写出该参数。
+        var updateSourceTriggerLine = property.HasUpdateSourceTrigger
+            ? $"    defaultUpdateSourceTrigger: {property.UpdateSourceTrigger}"
+            : null;
         var typeMetadata = useFrameworkMetadata
             ? GeneratedCode.Lines(
                 "new global::System.Windows.FrameworkPropertyMetadata(",
@@ -268,8 +274,9 @@ internal abstract class DependencyPropertyGeneratorBase(string id, params HashSe
                 GeneratedCode.Inline("    flags: ", property.Flags ?? "global::System.Windows.FrameworkPropertyMetadataOptions.None", 4) + ",",
                 GeneratedCode.Inline("    propertyChangedCallback: ", GeneratePropertyChangedCallback(@class, property), 4) + ",",
                 GeneratedCode.Inline("    coerceValueCallback: ", GenerateCoerceValueCallback(@class, property), 4) + ",",
-                "    isAnimationProhibited: false,",
-                $"    defaultUpdateSourceTrigger: {property.UpdateSourceTrigger}",
+                // 省略该参数时 isAnimationProhibited 成为最后一个参数，不能再带逗号。
+                updateSourceTriggerLine is null ? "    isAnimationProhibited: false" : "    isAnimationProhibited: false,",
+                updateSourceTriggerLine,
                 ")"
             )
             : GeneratedCode.Lines(

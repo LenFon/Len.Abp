@@ -1,0 +1,68 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:wc="clr-namespace:WpfApp.Controls">
+
+    <Style TargetType="{x:Type wc:RatingControl}">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type wc:RatingControl}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock
+                                Margin="0,0,8,0"
+                                VerticalAlignment="Center"
+                                FontWeight="SemiBold"
+                                Text="{TemplateBinding Caption}" />
+                            <ItemsControl ItemsSource="{Binding Stars, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button
+                                            Width="32"
+                                            Height="32"
+                                            Margin="{Binding StarMargin, RelativeSource={RelativeSource AncestorType=wc:RatingControl}}"
+                                            Padding="0"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Cursor="Hand"
+                                            Focusable="False">
+                                            <TextBlock FontSize="22" Text="★">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="Gainsboro" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFilled}" Value="True">
+                                                                <Setter Property="Foreground" Value="Gold" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Center"
+                                Foreground="#666666"
+                                Text="{TemplateBinding DisplayText}" />
+                        </StackPanel>
+                        <TextBlock
+                            Margin="0,4,0,0"
+                            FontSize="11"
+                            Foreground="#999999"
+                            Text="事件顺序：PreviewRatingChanged（隧道）→ RatingChanged（冒泡）→ RatingCommitted（直接）" />
+                    </StackPanel>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

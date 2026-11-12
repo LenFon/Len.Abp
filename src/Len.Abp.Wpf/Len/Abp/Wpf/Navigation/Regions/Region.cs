@@ -18,13 +18,15 @@ public class Region : IRegion
     /// </summary>
     /// <param name="name">区域名称。</param>
     /// <param name="owner">区域所属的视图名称。</param>
-    public Region(string name, string owner)
+    /// <param name="ownerView">创建该区域的视图实例。</param>
+    public Region(string name, string owner, IView? ownerView = null)
     {
         Behaviors = new RegionBehaviorCollection(this);
         _views = new(_metadata, x => true);
         _activeViews = new(_metadata, x => x.IsActive);
         Name = name;
         Owner = owner;
+        OwnerView = ownerView;
     }
 
     /// <inheritdoc/>
@@ -38,6 +40,9 @@ public class Region : IRegion
 
     /// <inheritdoc/>
     public string Owner { get; }
+
+    /// <inheritdoc/>
+    public IView? OwnerView { get; }
 
     /// <inheritdoc/>
     public IViewsCollection Views => _views;

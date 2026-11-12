@@ -12,7 +12,12 @@ public class GeneratorEdgeCaseTests
     private const string Stubs = """
         namespace System.Windows
         {
-            public class DependencyObject { public object GetValue(DependencyProperty dp) => null!; public void SetValue(DependencyProperty dp, object value) { } }
+            public class DependencyObject
+            {
+                public object GetValue(DependencyProperty dp) => null!;
+                public void SetValue(DependencyProperty dp, object value) { }
+                public void SetValue(DependencyPropertyKey key, object value) { }
+            }
             public class DependencyProperty
             {
                 public static DependencyProperty Register(string name, System.Type propertyType, System.Type ownerType, PropertyMetadata typeMetadata, ValidateValueCallback validateValueCallback) => new();
@@ -22,6 +27,9 @@ public class GeneratorEdgeCaseTests
             public class FrameworkPropertyMetadata : PropertyMetadata
             {
                 public FrameworkPropertyMetadata(object defaultValue, FrameworkPropertyMetadataOptions flags, PropertyChangedCallback propertyChangedCallback, CoerceValueCallback coerceValueCallback, bool isAnimationProhibited, System.Windows.Data.UpdateSourceTrigger defaultUpdateSourceTrigger)
+                    : base(defaultValue, propertyChangedCallback, coerceValueCallback) { }
+
+                public FrameworkPropertyMetadata(object defaultValue, FrameworkPropertyMetadataOptions flags, PropertyChangedCallback propertyChangedCallback, CoerceValueCallback coerceValueCallback, bool isAnimationProhibited)
                     : base(defaultValue, propertyChangedCallback, coerceValueCallback) { }
             }
             [System.Flags] public enum FrameworkPropertyMetadataOptions { None = 0, AffectsRender = 1, BindsTwoWayByDefault = 2 }
@@ -83,6 +91,26 @@ public class GeneratorEdgeCaseTests
             public class RoutedEventAttribute<T> : RoutedEventAttribute
             {
                 public RoutedEventAttribute(string name, System.Windows.RoutingStrategy strategy) : base(name, strategy, typeof(T)) { }
+            }
+
+            [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
+            public class AttachedDependencyPropertyAttribute : System.Attribute
+            {
+                public AttachedDependencyPropertyAttribute(string name, System.Type type) { }
+                public string? Category { get; set; }
+                public object? DefaultValue { get; set; }
+                public string? DefaultValueExpression { get; set; }
+                public string? Description { get; set; }
+                public System.Windows.FrameworkPropertyMetadataOptions Flags { get; set; }
+                public bool IsReadOnly { get; set; }
+                public System.Windows.Data.UpdateSourceTrigger UpdateSourceTrigger { get; set; }
+            }
+
+            [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
+            public class AttachedDependencyPropertyAttribute<T> : AttachedDependencyPropertyAttribute
+            {
+                public AttachedDependencyPropertyAttribute(string name) : base(name, typeof(T)) { }
+                public new T? DefaultValue { get; set; }
             }
         }
         """;
@@ -270,6 +298,39 @@ public class GeneratorEdgeCaseTests
     }
 
     /// <summary>
+    /// 只指定 Flags 时不能写出 <c>defaultUpdateSourceTrigger: Default</c>。
+    /// </summary>
+    /// <remarks>
+    /// WPF 会抛「不能将 FrameworkPropertyMetadata.DefaultUpdateSourceTrigger 设置为
+    /// UpdateSourceTrigger.Default；这样会创建循环定义」。该异常发生在类型初始化阶段，
+    /// 编译期看不出来，只有真正运行到注册依赖属性时才暴露。
+    /// </remarks>
+    [Fact]
+    public void FlagsWithoutUpdateSourceTrigger_OmitsDefaultTrigger()
+    {
+        var (sources, errors) = GeneratorTestHost.RunAndCompile(
+            new DependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.DependencyProperty<string>(
+                        "Title",
+                        Flags = System.Windows.FrameworkPropertyMetadataOptions.AffectsRender)]
+                    public partial class MyControl : System.Windows.DependencyObject { }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+        Assert.Contains("new global::System.Windows.FrameworkPropertyMetadata(", generated.Text);
+        Assert.DoesNotContain("defaultUpdateSourceTrigger:", generated.Text);
+        Assert.DoesNotContain("isAnimationProhibited: false,", generated.Text);
+        Assert.Empty(errors);
+    }
+
+    /// <summary>
     /// 分类与描述中的引号和尖括号会被转义，生成结果仍可编译。
     /// </summary>
     [Fact]
@@ -431,6 +492,92 @@ public class GeneratorEdgeCaseTests
 
         var generated = Assert.Single(sources);
         Assert.Contains("CoerceTitle((string)value, ref result)", generated.Text);
+        Assert.Empty(errors);
+    }
+
+    /// <summary>
+    /// 静态类宿主生成 <c>static partial class</c>，修饰符顺序必须是 <c>static partial</c>。
+    /// </summary>
+    /// <remarks>
+    /// 写成 <c>partial static class</c> 会报 CS0267；漏掉 <c>static</c> 则与用户声明的静态类冲突。
+    /// 注意：WPF 在运行时要求附加属性的 <c>ownerType</c> 派生自 <c>DependencyObject</c>，
+    /// 因此静态类只适合承载附加路由事件，附加依赖属性应放在派生自 <c>DependencyObject</c> 的类上。
+    /// </remarks>
+    [Fact]
+    public void StaticHost_GeneratesStaticPartialDeclaration()
+    {
+        var (sources, errors) = GeneratorTestHost.RunAndCompile(
+            new AttachedDependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.AttachedDependencyProperty<string>("Title")]
+                    public static partial class MyAttached { }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+        Assert.Contains("static partial class MyAttached", generated.Text);
+        Assert.DoesNotContain("partial static class", generated.Text);
+        Assert.Empty(errors);
+    }
+
+    /// <summary>
+    /// 静态类上的只读附加属性不能生成 <c>protected</c> 成员（CS1057）。
+    /// </summary>
+    /// <remarks>
+    /// 只验证生成代码可编译。运行时 WPF 仍会拒绝静态类作为附加属性的 ownerType，
+    /// 那是框架约束，不是生成器能修复的问题。
+    /// </remarks>
+    [Fact]
+    public void StaticHost_ReadOnlyAttachedProperty_UsesAccessibleModifier()
+    {
+        var (sources, errors) = GeneratorTestHost.RunAndCompile(
+            new AttachedDependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.AttachedDependencyProperty<string>("Title", IsReadOnly = true)]
+                    public static partial class MyAttached { }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+        Assert.Contains("private static void SetTitle(", generated.Text);
+        Assert.DoesNotContain("protected static void SetTitle(", generated.Text);
+        Assert.Empty(errors);
+    }
+
+    /// <summary>
+    /// 静态外层类型同样保留 <c>static</c>，嵌套类型逐层展开时不能丢失。
+    /// </summary>
+    [Fact]
+    public void StaticContainingType_PreservesStaticModifier()
+    {
+        var (sources, errors) = GeneratorTestHost.RunAndCompile(
+            new AttachedDependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    public static partial class Outer
+                    {
+                        [Len.Abp.Wpf.AttachedDependencyProperty<string>("Title")]
+                        public static partial class Inner { }
+                    }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+        Assert.Contains("static partial class Outer", generated.Text);
         Assert.Empty(errors);
     }
 }

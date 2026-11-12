@@ -1,3 +1,4 @@
+using Len.Abp.Wpf.Mvvm;
 using Len.Abp.Wpf.Navigation.Regions;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows.Controls;
@@ -69,7 +70,7 @@ public class RegionAdapterFinderTests
 
     private sealed class StubAdapter : IRegionAdapter
     {
-        public IRegion Initialize(object regionTarget, string regionName, string viewName) =>
-            new RegionImpl(regionName, viewName);
+        public IRegion Initialize(object regionTarget, string regionName, IView ownerView) =>
+            new RegionImpl(regionName, ownerView.ViewName, ownerView);
     }
 }

@@ -39,5 +39,6 @@ internal class ContentControlRegionAdapter : BasicRegionAdapter<ContentControl>,
     }
 
     /// <inheritdoc/>
-    protected override IRegion CreateRegion(string regionName, string viewName) => new SingleActiveRegion(regionName, viewName);
+    protected override IRegion CreateRegion(string regionName, IView ownerView) =>
+        new SingleActiveRegion(regionName, ownerView.ViewName, ownerView);
 }

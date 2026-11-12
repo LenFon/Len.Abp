@@ -111,6 +111,21 @@ public class ClassDataTests
     }
 
     /// <summary>
+    /// 静态类生成 <c>static partial class</c>，修饰符顺序不能颠倒。
+    /// </summary>
+    /// <remarks>
+    /// 写成 <c>partial static class</c> 会报 CS0267；漏掉 <c>static</c> 会与用户声明的静态类冲突。
+    /// </remarks>
+    [Fact]
+    public void WrapInTypeDeclarations_StaticClass_UsesStaticPartialOrder()
+    {
+        var result = Create(Name: "Sample", IsStatic: true).WrapInTypeDeclarations("int X;");
+
+        Assert.Contains("static partial class Sample", result);
+        Assert.DoesNotContain("partial static class", result);
+    }
+
+    /// <summary>
     /// 指定自身声明时使用该声明，并保留基类型列表的续行缩进。
     /// </summary>
     [Fact]
@@ -257,7 +272,8 @@ public class ClassDataTests
         IReadOnlyList<string>? ContainingTypes = null,
         bool IsRecord = false,
         bool HasAnyConstructor = false,
-        bool HasParameterlessConstructor = false
+        bool HasParameterlessConstructor = false,
+        bool IsStatic = false
     ) =>
         new(
             Namespace,
@@ -270,6 +286,7 @@ public class ClassDataTests
             ContainingTypes ?? [],
             IsRecord,
             HasAnyConstructor,
-            HasParameterlessConstructor
+            HasParameterlessConstructor,
+            IsStatic
         );
 }

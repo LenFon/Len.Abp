@@ -16,6 +16,7 @@ namespace Len.Abp.Analyzer;
 /// <param name="IsRecord">类型是否为记录声明，生成 partial 声明时必须保留 <c>record</c> 关键字。</param>
 /// <param name="HasAnyConstructor">类型是否显式声明了实例构造函数（不含编译器合成的构造函数）。</param>
 /// <param name="HasParameterlessConstructor">类型是否显式声明了无参实例构造函数。</param>
+/// <param name="IsStatic">类型是否为静态类，生成 partial 声明时必须保留 <c>static</c> 关键字。</param>
 public readonly record struct ClassData(
     string Namespace,
     string Name,
@@ -27,7 +28,8 @@ public readonly record struct ClassData(
     IReadOnlyList<string> ContainingTypes,
     bool IsRecord,
     bool HasAnyConstructor,
-    bool HasParameterlessConstructor)
+    bool HasParameterlessConstructor,
+    bool IsStatic = false)
 {
     /// <summary>
     /// 命名空间声明；类型位于全局命名空间时返回空字符串。
@@ -70,12 +72,18 @@ public readonly record struct ClassData(
     /// 最内层类型的声明文本，用于附加基类型与接口；为 null 时按类型种类生成 <c>partial class</c> 或 <c>partial record</c>。
     /// </param>
     /// <returns>完整的 partial 类型声明。</returns>
+    /// <remarks>
+    /// 静态类必须保留 <c>static</c> 关键字：partial 声明的修饰符不一致时，
+    /// 编译器会报「静态类不能包含实例成员」或「部分声明冲突」。
+    /// </remarks>
     public string WrapInTypeDeclarations(string body, string? selfDeclaration = null)
     {
         var keyword = IsRecord ? "record" : "class";
+        // 修饰符顺序必须是 `static partial class`，写成 `partial static class` 会报 CS0267。
+        var modifier = IsStatic ? "static " : string.Empty;
         var declarations = new List<string>(ContainingTypes.Count + 1);
         declarations.AddRange(ContainingTypes);
-        declarations.Add(selfDeclaration ?? $"partial {keyword} {Name}");
+        declarations.Add(selfDeclaration ?? $"{modifier}partial {keyword} {Name}");
 
         var builder = new StringBuilder();
         var indent = string.Empty;

@@ -32,9 +32,12 @@ public static class NamedTypeSymbolExtensions
                 _ => "class",
             };
 
+            // 静态外层类同样要保留 static，且修饰符顺序必须是 `static partial`。
+            var modifier = containingType.IsStatic ? "static " : string.Empty;
+
             containingTypes.Insert(
                 0,
-                $"partial {keyword} {containingType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)}"
+                $"{modifier}partial {keyword} {containingType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)}"
             );
         }
 
@@ -62,7 +65,8 @@ public static class NamedTypeSymbolExtensions
             ContainingTypes: containingTypes,
             IsRecord: classSymbol.IsRecord,
             HasAnyConstructor: constructors.Length > 0,
-            HasParameterlessConstructor: constructors.Any(static constructor => constructor.Parameters.Length == 0)
+            HasParameterlessConstructor: constructors.Any(static constructor => constructor.Parameters.Length == 0),
+            IsStatic: classSymbol.IsStatic
         );
     }
 }

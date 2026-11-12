@@ -53,7 +53,7 @@ public class RegionBuilderTests
             host.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
 
             Assert.Equal("MainRegion", adapter.RegionName);
-            Assert.Equal("MainView", adapter.ViewName);
+            Assert.Equal("MainView", adapter.OwnerView?.ViewName);
             Assert.Same(host, adapter.Target);
         });
     }
@@ -163,16 +163,16 @@ public class RegionBuilderTests
 
         public string? RegionName { get; private set; }
 
-        public string? ViewName { get; private set; }
+        public IView? OwnerView { get; private set; }
 
-        public IRegion Initialize(object regionTarget, string regionName, string viewName)
+        public IRegion Initialize(object regionTarget, string regionName, IView ownerView)
         {
             InitializeCount++;
             Target = regionTarget;
             RegionName = regionName;
-            ViewName = viewName;
+            OwnerView = ownerView;
 
-            return new RegionImpl(regionName, viewName);
+            return new RegionImpl(regionName, ownerView.ViewName, ownerView);
         }
     }
 

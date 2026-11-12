@@ -1,4 +1,5 @@
 ﻿using Len.Abp.Core;
+using Len.Abp.Wpf.Mvvm;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Volo.Abp.DependencyInjection;
@@ -10,6 +11,9 @@ namespace Len.Abp.Wpf.Navigation.Regions;
 /// </summary>
 internal interface IRegionAdapterServiceProviderAware
 {
+    /// <summary>
+    /// 获取或设置 ABP 延迟服务提供程序，由查找器在解析适配器时赋值。
+    /// </summary>
     IAbpLazyServiceProvider? AbpLazyServiceProvider { get; set; }
 }
 
@@ -42,18 +46,18 @@ public abstract class BasicRegionAdapter<T> : IRegionAdapter, IRegionAdapterServ
             ? lazyServiceProvider.LazyGetRequiredService<IServiceProvider>()
             : AbpServiceProvider.Current;
 
-    IRegion IRegionAdapter.Initialize(object regionTarget, string regionName, string viewName)
+    IRegion IRegionAdapter.Initialize(object regionTarget, string regionName, IView ownerView)
     {
         ArgumentNullException.ThrowIfNull(regionTarget, nameof(regionTarget));
         ArgumentNullException.ThrowIfNull(regionName, nameof(regionName));
-        ArgumentNullException.ThrowIfNull(viewName, nameof(viewName));
+        ArgumentNullException.ThrowIfNull(ownerView, nameof(ownerView));
 
         if (regionTarget is not T castedObject)
         {
             throw new ArgumentException($"区域目标必须是 {typeof(T).FullName} 类型。", nameof(regionTarget));
         }
 
-        return Initialize(castedObject, regionName, viewName);
+        return Initialize(castedObject, regionName, ownerView);
     }
 
     /// <summary>
@@ -97,13 +101,13 @@ public abstract class BasicRegionAdapter<T> : IRegionAdapter, IRegionAdapterServ
     /// 创建区域实例。
     /// </summary>
     /// <param name="regionName">区域名称。</param>
-    /// <param name="viewName">区域所属的视图名称。</param>
+    /// <param name="ownerView">区域所属的视图实例。</param>
     /// <returns>创建的区域。</returns>
-    protected abstract IRegion CreateRegion(string regionName, string viewName);
+    protected abstract IRegion CreateRegion(string regionName, IView ownerView);
 
-    private IRegion Initialize(T regionTarget, string regionName, string viewName)
+    private IRegion Initialize(T regionTarget, string regionName, IView ownerView)
     {
-        var region = CreateRegion(regionName, viewName);
+        var region = CreateRegion(regionName, ownerView);
 
         Adapt(region, regionTarget);
         AttachBehaviors(region, regionTarget);

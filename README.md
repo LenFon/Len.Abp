@@ -20,6 +20,7 @@
 | `Len.Abp.Wpf` | net10.0-windows | 运行时：UI 线程宿主、导航服务、区域引擎 |
 | `Len.Abp.Analyzer` | netstandard2.0 | Roslyn 增量生成器的通用基础设施 |
 | `Len.Abp.Analyzer.Wpf` | netstandard2.0 | 5 个 WPF 专用源生成器 |
+| `demos/wpf/WpfApp.Controls` | net10.0-windows | 示例自定义控件库（独立程序集，通过 `XmlnsDefinition` 暴露 XAML 命名空间） |
 | `demos/wpf/WpfApp` | net10.0-windows | 示例界面（MahApps + MaterialDesign） |
 | `demos/wpf/WpfApp.Host` | net10.0-windows | 示例宿主（Generic Host + Serilog + Autofac） |
 
@@ -97,6 +98,27 @@ Shell 视图固定为单例（`IShell` 本身继承 `ISingletonDependency`），
 <ContentControl len:Region.Name="MainRegion" />
 ```
 
+区域可以无限层嵌套：视图内部再声明区域，该区域就归属于这个视图实例。
+
+```xml
+<!-- DemoView.xaml：DemoView 被导航进 MainRegion 后，DemoRegion 属于这个 DemoView 实例 -->
+<UserControl ...>
+    <ContentControl len:Region.Name="DemoRegion" />
+</UserControl>
+```
+
+```csharp
+// 在 DemoViewModel 里导航到自己的子区域
+await NavigationService.NavigateAsync("DemoRegion", "demo2", IParameters.Create());
+```
+
+嵌套区域的语义：
+
+- **所有权按视图实例记录**，不是按视图名。同一个视图存在多个实例时，各自的子区域互不干扰。
+- **同名区域优先命中可见的那个**。多个实例拥有同名子区域时，导航命中活动链上的实例，也就是用户当前看到的那个。
+- **拆除是递归的**。父视图失活且不保活时，其内部任意深度的区域子树一并摘除，瞬态嵌套视图按同一规则释放。
+- **容器管理的嵌套视图保留自己的区域**。区域只在视图首次加载时创建，摘掉后不会重建，所以单例/作用域视图的区域必须留着，供下次导航复用。
+
 ### 3. 导航
 
 ```csharp
@@ -113,6 +135,33 @@ public Task OnNavigatedToAsync(INavigationContext context)
 }
 ```
 
+#### 视图保活
+
+视图失活时是否留在区域中复用，按以下优先级判断：
+
+| 条件 | 行为 |
+| --- | --- |
+| 视图模型声明 `KeepAlive = true` | 视图与视图模型都保留，下次导航复用同一实例 |
+| 视图或视图模型是单例 / 作用域 | 按 IoC 规则保留，下次导航复用容器中的实例 |
+| 其余情况（含未实现 `IRegionMemberLifetime`） | 不保留，移出区域并释放瞬态实例 |
+
+```csharp
+public class GalleryViewModel : ObservableObject, IRegionMemberLifetime
+{
+    // 需要保留状态（如日志、输入内容）时显式保活。
+    public bool KeepAlive => true;
+}
+```
+
+未实现 `IRegionMemberLifetime` 等同于 `KeepAlive = false`，避免忘记声明契约导致视图在区域里无限累积。
+
+容器管理的实例（`ISingletonDependency` / `IScopedDependency`）即使 `KeepAlive = false` 也会保留：
+它们由 IoC 容器持有，移除区域不会释放它们，反而会丢掉视图内部的嵌套区域，下次导航还得重建整棵视图子树。
+释放只针对瞬态实例，单例与作用域实例由容器负责销毁。
+
+拆除父视图时会递归处理整棵区域子树，但容器管理的嵌套视图是例外：它们的区域会保留，
+否则下次复用该实例时区域已经不存在，导航会失败。
+
 ### 4. 生成依赖属性
 
 ```csharp
@@ -126,12 +175,139 @@ public partial class MyControl : Control
 
 生成器会产出 `TitleProperty`、CLR 包装属性，以及 `CoerceTitle`、`IsTitleValid`、`OnTitleChanged` 三个分部方法。
 
-### 5. 生成路由事件
+特性支持 `Category`、`Description`、`DefaultValueExpression`、`Flags`、`UpdateSourceTrigger` 与 `IsReadOnly`：
+
+```csharp
+[DependencyProperty<int>(
+    "Rating",
+    DefaultValue = 0,
+    Category = "行为",
+    Description = "当前评分。",
+    Flags = FrameworkPropertyMetadataOptions.BindsTwoWayByDefault)]
+[DependencyProperty<string>(
+    "DisplayText",
+    DefaultValue = "未评分",
+    IsReadOnly = true)]
+public partial class RatingControl : Control { }
+```
+
+`IsReadOnly = true` 时生成器改用 `RegisterReadOnly`，产出 `DisplayTextPropertyKey`（`protected internal`）
+与 `public static readonly DisplayTextProperty`，CLR 属性的 setter 为 `protected`。
+控件内部通过 `SetValue(DisplayTextPropertyKey, value)` 写入，外部调用 `SetValue(DisplayTextProperty, ...)`
+会抛 `InvalidOperationException`，只读约束由 WPF 依赖属性系统保证。
+
+### 5. 生成附加依赖属性
+
+```csharp
+[AttachedDependencyProperty<int>("MaxTagLength", DefaultValue = 12)]
+public partial class TagInputAssist : DependencyObject
+{
+    static partial void IsMaxTagLengthValid(int value, ref bool result) => result = value is >= 1 and <= 64;
+}
+```
+
+生成器会产出 `MaxTagLengthProperty`、`GetMaxTagLength` / `SetMaxTagLength`，以及三个静态分部钩子。
+宿主必须派生自 `DependencyObject`——WPF 注册附加属性时要求 `ownerType` 满足该条件，静态类不行。
+
+`IsReadOnly = true` 时改用 `RegisterReadOnly`，`Set` 访问器为 `protected`（静态宿主上退化为 `private`，避免 CS1057），
+外部只能通过 `GetXxx` 读取：
+
+```csharp
+[AttachedDependencyProperty<int>("TagCount", DefaultValue = 0, IsReadOnly = true)]
+public partial class TagInputAssist : DependencyObject { }
+```
+
+只读附加属性在 `ControlTemplate` 里绑定时要注意：`StringFormat` 与 `Mode=OneWay` 组合会让绑定取不到值，
+应直接写 `{Binding Path=(wc:TagInputAssist.TagCount), RelativeSource={RelativeSource TemplatedParent}}`。
+
+### 6. 生成路由事件
 
 ```csharp
 [RoutedEvent("Clicked", RoutingStrategy.Bubble)]
 public partial class MyControl : Control { }
 ```
+
+生成器会产出 `ClickedEvent`、事件访问器与 `RaiseClickedEvent` 方法。
+泛型重载可指定自定义事件处理程序委托，生成器会从委托签名推断事件参数类型：
+
+```csharp
+public delegate void RatingChangedEventHandler(object sender, RatingChangedEventArgs e);
+
+[RoutedEvent<RatingChangedEventHandler>("RatingChanged", RoutingStrategy.Bubble)]
+public partial class RatingControl : UserControl { }
+```
+
+### 7. 生成附加路由事件
+
+```csharp
+[AttachedRoutedEvent<TagAddedEventHandler>("TagAdded", RoutingStrategy.Bubble)]
+public static partial class TagInputAssist { }
+```
+
+生成器会产出 `TagAddedEvent`、`AddTagAddedHandler` / `RemoveTagAddedHandler` 与 `RaiseTagAddedEvent`。
+附加路由事件只提供静态方法，事件源需要自行接线（示例见 `InteractionAssist.EnableDoubleClick`）。
+
+### 8. 示例程序
+
+自定义控件放在独立类库 `demos/wpf/WpfApp.Controls` 中，并通过程序集级特性暴露 XAML 命名空间，
+用法与 `Len.Abp.Wpf.Abstractions` 一致：
+
+```csharp
+[assembly: XmlnsPrefix("http://github.com/lenfon/wpfapp/controls", "wc")]
+[assembly: XmlnsDefinition("http://github.com/lenfon/wpfapp/controls", "WpfApp.Controls")]
+```
+
+引用该程序集后，XAML 里用 URL 前缀即可访问控件，不需要 `clr-namespace`：
+
+```xml
+xmlns:wc="http://github.com/lenfon/wpfapp/controls"
+
+<wc:RatingControl Rating="{Binding Rating, Mode=TwoWay}" />
+<wc:TagInput wc:TagInputAssist.MaxTagLength="12" />
+```
+
+控件库把生成器的能力全部用了一遍：
+
+| 控件 | 覆盖的生成器能力 |
+| --- | --- |
+| `RatingControl` | 依赖属性（默认值、分类、描述、元数据标志、只读）、校验 / 强制值 / 变更钩子、冒泡 / 隧道 / 直接三种路由策略 |
+| `TagInput` + `TagInputAssist` | 附加依赖属性（引用类型、值类型、默认值表达式、只读）、附加路由事件、自定义事件参数 |
+| `InteractionAssist` | 非控件宿主承载附加属性与附加路由事件 |
+
+两个控件都是真正的自定义控件：派生自 `Control`，外观由 `ControlTemplate` 提供，
+使用方可以整体替换模板。样式按控件拆成独立文件，由 `Themes/Default.xaml` 合并：
+
+```
+Themes/
+  RatingControl.xaml   RatingControl 的默认样式
+  TagInput.xaml        TagInput 的默认样式
+  Default.xaml         合并上面两个文件
+```
+
+控件库是一个 ABP 模块，只加载 `Default.xaml` 这一个入口，新增控件时改 Default 即可：
+
+```csharp
+[DependsOn(typeof(LenAbpWpfAbstractionsModule))]
+public class WpfAppControlsModule : AbpWpfModule
+{
+    public override void ConfigureResources(ICollection<ResourceDictionary> resources)
+    {
+        resources.Add(new UriResourceDictionary(
+            "pack://application:,,,/WpfApp.Controls;component/Themes/Default.xaml"));
+    }
+}
+```
+
+应用侧只需声明模块依赖，样式就会随模块一起合并进 `Application.Resources`：
+
+```csharp
+[DependsOn(typeof(LenAbpWpfAbstractionsModule))]
+[DependsOn(typeof(WpfAppControlsModule))]
+public class WpfAppModule : AbpWpfModule { }
+```
+
+主窗口左侧的导航按钮还演示了 `Lifetime` 的三种取值：单例视图反复导航复用同一实例，
+瞬态视图每次导航创建新实例，作用域视图在作用域内复用。
 
 ## 许可证
 
