@@ -4,9 +4,14 @@
 	<Import Project="../../common.props" />
 	<Import Project="../../configureawait.props" />
 
+	<PropertyGroup>
+		<PackageId>Len.Abp.Core</PackageId>
+		<Description>ABP 框架的 WPF 基础扩展：枚举解析器与集合扩展方法。</Description>
+	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Volo.Abp.Core" />
+		<PackageReference Include="Volo.Abp.Localization" />
 	</ItemGroup>
 
 </Project>

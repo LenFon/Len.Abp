@@ -1,17 +1,26 @@
-﻿using Len.Abp.Wpf.Navigation.Regions;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Len.Abp.Core;
+using Len.Abp.Wpf.Navigation.Regions;
 using System.ComponentModel;
 using System.Windows;
 
 namespace Len.Abp.Wpf.Navigation;
 
+/// <summary>
+/// 将控件标记为导航区域宿主的附加属性。
+/// </summary>
 public static class Region
 {
+    /// <summary>
+    /// 标识区域名称的附加属性。
+    /// </summary>
     public static readonly DependencyProperty NameProperty =
         DependencyProperty.RegisterAttached("Name", typeof(string), typeof(Region), new PropertyMetadata(null, OnNameChanged));
 
-    internal static IServiceProvider ServiceProvider { get; set; } = default!;
-
+    /// <summary>
+    /// 获取控件的区域名称。
+    /// </summary>
+    /// <param name="regionTarget">区域宿主控件。</param>
+    /// <returns>区域名称。</returns>
     public static string GetName(DependencyObject regionTarget)
     {
         ArgumentNullException.ThrowIfNull(regionTarget);
@@ -19,6 +28,11 @@ public static class Region
         return (string)regionTarget.GetValue(NameProperty);
     }
 
+    /// <summary>
+    /// 设置控件的区域名称。
+    /// </summary>
+    /// <param name="regionTarget">区域宿主控件。</param>
+    /// <param name="name">区域名称。</param>
     public static void SetName(DependencyObject regionTarget, string name)
     {
         ArgumentNullException.ThrowIfNull(regionTarget);
@@ -28,9 +42,9 @@ public static class Region
 
     private static void CreateRegion(DependencyObject element)
     {
-        var builder = ServiceProvider.GetRequiredService<IRegionBulider>();
+        var builder = AbpServiceProvider.GetRequiredService<IRegionBuilder>();
 
-        builder.Bulid(element);
+        builder.Build(element);
     }
 
     private static void OnNameChanged(DependencyObject element, DependencyPropertyChangedEventArgs e)

@@ -2,9 +2,17 @@
 	<Import Project="../../common.wpf.props" />
 	<Import Project="../../configureawait.props" />
 
+	<PropertyGroup>
+		<PackageId>Len.Abp.Wpf.Abstractions</PackageId>
+		<Description>WPF 导航与 MVVM 的契约层：特性、导航/区域接口与参数解析。</Description>
+	</PropertyGroup>
+
 	<ItemGroup>
-		<ProjectReference Include="..\Len.Abp.Analyzer.Wpf\Len.Abp.Analyzer.Wpf.csproj" />
 		<ProjectReference Include="..\Len.Abp.Core\Len.Abp.Core.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Len.Abp.Wpf.Abstractions.Tests" />
 	</ItemGroup>
 
 </Project>

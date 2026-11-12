@@ -6,16 +6,22 @@ using Volo.Abp.DependencyInjection;
 
 namespace WpfApp.ViewModels;
 
-public partial class MainShellViewModel : ObservableObject, IScopedDependency
+/// <summary>
+/// 主窗口视图模型，演示在 Shell 中切换区域内容。
+/// </summary>
+/// <remarks>
+/// Shell 视图是单例，视图模型若声明为 Scoped 会形成 captive dependency，
+/// 因此这里使用瞬态生命周期。
+/// </remarks>
+public partial class MainShellViewModel(INavigationService navigationService) : ObservableObject, ITransientDependency
 {
     private bool _state = false;
 
-    public required IAbpLazyServiceProvider AbpLazyServiceProvider { get; init; }
-
+    /// <summary>
+    /// 获取或设置窗口标题。
+    /// </summary>
     [ObservableProperty]
     public partial string Title { get; set; } = "Main Shell";
-
-    protected INavigationService NavigationService => AbpLazyServiceProvider.LazyGetRequiredService<INavigationService>();
 
     [RelayCommand]
     private async Task ChangeTitleAsync()
@@ -25,11 +31,11 @@ public partial class MainShellViewModel : ObservableObject, IScopedDependency
 
         if (_state)
         {
-            await NavigationService.NavigateAsync("MainRegion", "login", IParameters.Create());
+            await navigationService.NavigateAsync("MainRegion", "login", IParameters.Create());
         }
         else
         {
-            await NavigationService.NavigateAsync("MainRegion", "demo2", IParameters.Create());
+            await navigationService.NavigateAsync("MainRegion", "demo2", IParameters.Create());
         }
     }
 }

@@ -147,6 +147,9 @@ coverage*.json
 coverage*.xml
 coverage*.info
 
+# 本地覆盖率报告目录（由 dotnet test --collect 生成）
+coverage/
+
 # Visual Studio code coverage results
 *.coverage
 *.coveragexml
@@ -361,3 +364,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# 由 scripts/set-version.ps1 生成的版本文件
+version.props

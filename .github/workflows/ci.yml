@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*', '[0-9]*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build-test:
+    name: 构建与测试
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 安装 .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: 还原依赖
+        run: dotnet restore Len.Abp.slnx
+
+      - name: 构建
+        run: dotnet build Len.Abp.slnx --no-restore --configuration Release
+
+      - name: 测试
+        run: >
+          dotnet test Len.Abp.slnx --no-build --configuration Release
+          --collect:"XPlat Code Coverage"
+          --results-directory ./coverage
+          --logger "trx;LogFileName=test-results.trx"
+
+      - name: 校验覆盖率
+        shell: pwsh
+        run: ./scripts/check-coverage.ps1 -Path ./coverage -Threshold 90
+
+      - name: 上传测试结果
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/test-results.trx'
+          if-no-files-found: ignore
+
+      - name: 上传覆盖率报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: ./coverage/**/coverage.cobertura.xml
+          if-no-files-found: ignore
+
+  pack:
+    name: 打包
+    needs: build-test
+    # 仅在打 tag 时产出可发布的包
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 安装 .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: 从 tag 生成版本
+        shell: pwsh
+        run: ./scripts/set-version.ps1
+
+      - name: 打包
+        run: dotnet pack Len.Abp.slnx --configuration Release --output ./artifacts
+
+      - name: 上传 NuGet 包
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./artifacts/*.nupkg
+          if-no-files-found: error
+
+  publish:
+    name: 发布到 NuGet
+    needs: pack
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: windows-latest
+    # 需要仓库配置 NUGET_API_KEY 密钥；未配置时该任务会被跳过
+    environment: nuget
+
+    steps:
+      - name: 下载 NuGet 包
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./artifacts
+
+      - name: 安装 .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: 推送到 NuGet.org
+        if: ${{ secrets.NUGET_API_KEY != '' }}
+        run: >
+          dotnet nuget push ./artifacts/*.nupkg
+          --api-key ${{ secrets.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate

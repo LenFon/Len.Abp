@@ -5,6 +5,8 @@
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+		<PackageId>Len.Abp.Analyzer</PackageId>
+		<Description>Roslyn 增量源生成器的通用基础设施，供 WPF 生成器复用。</Description>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<Import Project="../../common.wpf.props" />
+	<Import Project="../../test.props" />
+
+	<ItemGroup>
+		<PackageReference Include="Volo.Abp.Autofac" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\Len.Abp.Wpf.Abstractions\Len.Abp.Wpf.Abstractions.csproj" />
+		<ProjectReference Include="..\..\src\Len.Abp.Wpf\Len.Abp.Wpf.csproj" />
+	</ItemGroup>
+
+</Project>

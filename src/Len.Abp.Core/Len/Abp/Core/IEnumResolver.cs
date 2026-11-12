@@ -3,21 +3,21 @@
 namespace Len.Abp.Core;
 
 /// <summary>
-/// Enum Resolver
+/// 枚举解析器。
 /// </summary>
-/// <typeparam name="TEnum"></typeparam>
+/// <typeparam name="TEnum">枚举类型。</typeparam>
 public interface IEnumResolver<TEnum> where TEnum : Enum
 {
     /// <summary>
-    /// Get the name and value of the enum item
+    /// 获取指定枚举项的名称和值。
     /// </summary>
-    /// <param name="value"></param>
-    /// <returns></returns>
+    /// <param name="value">枚举项。</param>
+    /// <returns>枚举项的名称和值。</returns>
     NameValue<TEnum> GetNameValue(TEnum value);
 
     /// <summary>
-    /// Get the name and value of the enum
+    /// 获取枚举的名称和值。
     /// </summary>
-    /// <returns></returns>
+    /// <returns>枚举项的名称和值集合。</returns>
     IEnumerable<NameValue<TEnum>> GetNameValues();
 }

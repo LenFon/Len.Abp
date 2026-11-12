@@ -7,9 +7,15 @@
 		<IsRoslynComponent>true</IsRoslynComponent>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+		<PackageId>Len.Abp.Analyzer.Wpf</PackageId>
+		<Description>WPF 源生成器：依赖属性、附加属性、路由事件与 MVVM 视图。</Description>
+		<!-- 分析器包只含 analyzers/ 目录，不提供 lib/，声明依赖组会触发 NU5128 -->
+		<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+		<NoWarn>$(NoWarn);NU5128</NoWarn>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<DevelopmentDependency>true</DevelopmentDependency>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="PolySharp">
@@ -23,5 +29,8 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Len.Abp.Analyzer\Len.Abp.Analyzer.csproj"  PrivateAssets="All"/>
+	</ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="Len.Abp.Analyzer.Wpf.Tests" />
 	</ItemGroup>
 </Project>

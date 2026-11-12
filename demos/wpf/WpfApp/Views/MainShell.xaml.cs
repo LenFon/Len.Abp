@@ -9,6 +9,9 @@ namespace WpfApp.Views;
 [View<MainShellViewModel>(ViewName = "main", IsShell = true)]
 public partial class MainShell
 {
+    /// <summary>
+    /// 初始化主窗口。
+    /// </summary>
     public MainShell()
     {
         InitializeComponent();

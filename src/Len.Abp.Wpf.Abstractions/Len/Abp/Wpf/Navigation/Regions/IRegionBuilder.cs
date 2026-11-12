@@ -3,7 +3,7 @@ using Volo.Abp.DependencyInjection;
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
-public interface IRegionBulider : ITransientDependency
+public interface IRegionBuilder : ITransientDependency
 {
-    void Bulid(DependencyObject element);
+    void Build(DependencyObject element);
 }

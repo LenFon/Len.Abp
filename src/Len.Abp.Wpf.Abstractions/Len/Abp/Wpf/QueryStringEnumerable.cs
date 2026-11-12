@@ -1,36 +1,39 @@
-﻿using System.Diagnostics;
-
-namespace Len.Abp.Wpf;
+﻿namespace Len.Abp.Wpf;
 
 /// <summary>
-/// An enumerable that can supply the name/value pairs from a URI query string.
+/// 可从 URI 查询字符串中提供名称/值对的可枚举对象。
 /// </summary>
 /// <remarks>
-/// Constructs an instance of <see cref="QueryStringEnumerable"/>.
+/// 构造 <see cref="QueryStringEnumerable"/> 的实例。
 /// </remarks>
-/// <param name="queryString">The query string.</param>
+/// <param name="queryString">查询字符串。</param>
 internal readonly struct QueryStringEnumerable(ReadOnlyMemory<char> queryString)
 {
     private readonly ReadOnlyMemory<char> _queryString = queryString;
 
     /// <summary>
-    /// Constructs an instance of <see cref="QueryStringEnumerable"/>.
+    /// 构造 <see cref="QueryStringEnumerable"/> 的实例。
     /// </summary>
-    /// <param name="queryString">The query string.</param>
+    /// <param name="queryString">查询字符串。</param>
     public QueryStringEnumerable(string? queryString)
         : this(queryString.AsMemory()) { }
 
     /// <summary>
-    /// Retrieves an object that can iterate through the name/value pairs in the query string.
+    /// 获取一个可遍历查询字符串中名称/值对的对象。
     /// </summary>
-    /// <returns>An object that can iterate through the name/value pairs in the query string.</returns>
+    /// <returns>可遍历查询字符串中名称/值对的对象。</returns>
     public Enumerator GetEnumerator() => new(_queryString);
 
     /// <summary>
-    /// Represents a single name/value pair extracted from a query string during enumeration.
+    /// 表示枚举过程中从查询字符串提取的单个名称/值对。
     /// </summary>
     public readonly struct EncodedNameValuePair
     {
+        /// <summary>
+        /// 初始化名称/值对。
+        /// </summary>
+        /// <param name="encodedName">编码后的名称。</param>
+        /// <param name="encodedValue">编码后的值。</param>
         internal EncodedNameValuePair(ReadOnlyMemory<char> encodedName, ReadOnlyMemory<char> encodedValue)
         {
             EncodedName = encodedName;
@@ -38,27 +41,27 @@ internal readonly struct QueryStringEnumerable(ReadOnlyMemory<char> queryString)
         }
 
         /// <summary>
-        /// Gets the name from this name/value pair in its original encoded form.
-        /// To get the decoded string, call <see cref="DecodeName"/>.
+        /// 以原始编码形式获取该名称/值对中的名称。
+        /// 如需获取解码后的字符串，请调用 <see cref="DecodeName"/>。
         /// </summary>
         public readonly ReadOnlyMemory<char> EncodedName { get; }
 
         /// <summary>
-        /// Gets the value from this name/value pair in its original encoded form.
-        /// To get the decoded string, call <see cref="DecodeValue"/>.
+        /// 以原始编码形式获取该名称/值对中的值。
+        /// 如需获取解码后的字符串，请调用 <see cref="DecodeValue"/>。
         /// </summary>
         public readonly ReadOnlyMemory<char> EncodedValue { get; }
 
         /// <summary>
-        /// Decodes the name from this name/value pair.
+        /// 解码该名称/值对中的名称。
         /// </summary>
-        /// <returns>Characters representing the decoded name.</returns>
+        /// <returns>表示解码后名称的字符。</returns>
         public ReadOnlyMemory<char> DecodeName() => Decode(EncodedName);
 
         /// <summary>
-        /// Decodes the value from this name/value pair.
+        /// 解码该名称/值对中的值。
         /// </summary>
-        /// <returns>Characters representing the decoded value.</returns>
+        /// <returns>表示解码后值的字符。</returns>
         public ReadOnlyMemory<char> DecodeValue() => Decode(EncodedValue);
 
         private static ReadOnlyMemory<char> Decode(ReadOnlyMemory<char> chars)
@@ -70,39 +73,47 @@ internal readonly struct QueryStringEnumerable(ReadOnlyMemory<char> queryString)
             }
             var buffer = new char[source.Length];
             source.Replace(buffer, '+', ' ');
-            var success = Uri.TryUnescapeDataString(buffer, buffer, out var unescapedLength);
-            Debug.Assert(success);
+            if (!Uri.TryUnescapeDataString(buffer, buffer, out var unescapedLength))
+            {
+                // 畸形转义序列无法解码时保留原始文本，避免静默变成空字符串。
+                return chars;
+            }
+
             return buffer.AsMemory(0, unescapedLength);
         }
     }
 
     /// <summary>
-    /// An enumerator that supplies the name/value pairs from a URI query string.
+    /// 从 URI 查询字符串中提供名称/值对的枚举器。
     /// </summary>
     public struct Enumerator
     {
         private ReadOnlyMemory<char> _query;
 
+        /// <summary>
+        /// 初始化枚举器。
+        /// </summary>
+        /// <param name="query">查询字符串。</param>
         internal Enumerator(ReadOnlyMemory<char> query)
         {
             Current = default;
-            _query = query.IsEmpty || query.Span[0] != '?' ? query : query.Slice(1);
+            _query = query.IsEmpty || query.Span[0] != '?' ? query : query[1..];
         }
 
         /// <summary>
-        /// Gets the currently referenced key/value pair in the query string being enumerated.
+        /// 获取正在枚举的查询字符串中当前引用的键/值对。
         /// </summary>
         public EncodedNameValuePair Current { get; private set; }
 
         /// <summary>
-        /// Moves to the next key/value pair in the query string being enumerated.
+        /// 移动到正在枚举的查询字符串中的下一个键/值对。
         /// </summary>
-        /// <returns>True if there is another key/value pair, otherwise false.</returns>
+        /// <returns>如果还有下一个键/值对则返回 true，否则返回 false。</returns>
         public bool MoveNext()
         {
             while (!_query.IsEmpty)
             {
-                // Chomp off the next segment
+                // 截取下一段
                 ReadOnlyMemory<char> segment;
                 var delimiterIndex = _query.Span.IndexOf('&');
                 if (delimiterIndex >= 0)
@@ -116,7 +127,7 @@ internal readonly struct QueryStringEnumerable(ReadOnlyMemory<char> queryString)
                     _query = default;
                 }
 
-                // If it's nonempty, emit it
+                // 非空则输出
                 var equalIndex = segment.Span.IndexOf('=');
                 if (equalIndex >= 0)
                 {

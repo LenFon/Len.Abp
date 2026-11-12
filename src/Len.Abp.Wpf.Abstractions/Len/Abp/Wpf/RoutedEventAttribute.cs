@@ -3,46 +3,46 @@
 namespace Len.Abp.Wpf;
 
 /// <summary>
-/// Attribute to generate a routed event.
+/// 用于生成路由事件的特性。
 /// </summary>
-/// <param name="name">The name of the routed event. The name must be unique within the owner type and cannot be null or an empty string.</param>
-/// <param name="strategy">The routing strategy of the routed event.</param>
-/// <param name="handlerType">The type of the event handler. This must be a delegate type.</param>
+/// <param name="name">路由事件的名称。名称在所有者类型内必须唯一，且不能为 null 或空字符串。</param>
+/// <param name="strategy">路由事件的路由策略。</param>
+/// <param name="handlerType">事件处理程序的类型，必须是委托类型。</param>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public class RoutedEventAttribute(string name, RoutingStrategy strategy, Type? handlerType = null) : Attribute
 {
     /// <summary>
-    /// Gets or sets the category of the routed event.
+    /// 获取或设置路由事件的分类。
     /// </summary>
     public string? Category { get; set; }
 
     /// <summary>
-    ///  Gets or sets the description of the routed event.
+    /// 获取或设置路由事件的描述。
     /// </summary>
     public string? Description { get; set; }
 
     /// <summary>
-    /// The name of the routed event.
+    /// 路由事件的名称。
     /// </summary>
     public string Name { get; } = name ?? throw new ArgumentNullException(nameof(name));
 
     /// <summary>
-    /// The routing strategy of the routed event.
+    /// 路由事件的路由策略。
     /// </summary>
     public RoutingStrategy Strategy { get; } = strategy;
 
     /// <summary>
-    /// The type of the event handler. This must be a delegate type.
-    /// <br/>Default: typeof(RoutedEventHandler)
+    /// 事件处理程序的类型，必须是委托类型。
+    /// <br/>默认值：typeof(RoutedEventHandler)
     /// </summary>
     public Type? Type { get; set; } = handlerType ?? typeof(RoutedEventHandler);
 }
 
 /// <summary>
-/// Attribute to generate a routed event.
+/// 用于生成路由事件的特性。
 /// </summary>
-/// <typeparam name="T">The type of the event handler. This must be a delegate type.</typeparam>
-/// <param name="name">The name of the routed event. The name must be unique within the owner type and cannot be null or an empty string.</param>
-/// <param name="strategy">The routing strategy of the routed event.</param>
+/// <typeparam name="T">事件处理程序的类型，必须是委托类型。</typeparam>
+/// <param name="name">路由事件的名称。名称在所有者类型内必须唯一，且不能为 null 或空字符串。</param>
+/// <param name="strategy">路由事件的路由策略。</param>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public class RoutedEventAttribute<T>(string name, RoutingStrategy strategy) : RoutedEventAttribute(name, strategy, typeof(T));

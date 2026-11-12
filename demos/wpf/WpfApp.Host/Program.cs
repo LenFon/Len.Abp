@@ -22,7 +22,7 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
-    Log.Information("Starting wpf host.");
+    Log.Information("正在启动 WPF 宿主。");
 
     var builder = Host.CreateApplicationBuilder(args);
 
@@ -48,7 +48,7 @@ catch (Exception ex)
         throw;
     }
 
-    Log.Fatal(ex, "Host terminated unexpectedly!");
+    Log.Fatal(ex, "宿主意外终止！");
     return 1;
 }
 finally

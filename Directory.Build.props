@@ -1,0 +1,19 @@
+<Project>
+
+	<!--
+		包版本由 git tag 决定。MSBuild 在求值期无法执行进程，
+		因此版本通过仓库根目录的 version.props 提供（由 scripts/set-version.ps1 生成）。
+		该文件不存在时回退到 0.0.0-dev，保证未打 tag 的本地构建也能成功。
+	-->
+	<Import Project="$(MSBuildThisFileDirectory)version.props" Condition="Exists('$(MSBuildThisFileDirectory)version.props')" />
+
+	<PropertyGroup>
+		<VersionFromTag Condition="'$(VersionFromTag)' == ''">0.0.0-dev</VersionFromTag>
+		<!-- 显式传入 -p:Version 时以传入值为准 -->
+		<Version Condition="'$(Version)' == ''">$(VersionFromTag)</Version>
+		<VersionPrefix Condition="'$(VersionPrefix)' == ''">$(Version.Split('-')[0])</VersionPrefix>
+		<PackageVersion Condition="'$(PackageVersion)' == ''">$(Version)</PackageVersion>
+		<InformationalVersion Condition="'$(InformationalVersion)' == ''">$(Version)</InformationalVersion>
+	</PropertyGroup>
+
+</Project>

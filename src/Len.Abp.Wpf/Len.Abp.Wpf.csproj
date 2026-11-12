@@ -2,13 +2,22 @@
 
 	<Import Project="../../common.wpf.props" />
 	<Import Project="../../configureawait.props" />
-	
+
+	<PropertyGroup>
+		<PackageId>Len.Abp.Wpf</PackageId>
+		<Description>WPF 运行时：UI 线程宿主、导航服务与区域引擎。</Description>
+	</PropertyGroup>
+
 	<ItemGroup>
 	  <PackageReference Include="Volo.Abp.BackgroundWorkers" />
 	</ItemGroup>
 
 	<ItemGroup>
 	  <ProjectReference Include="..\Len.Abp.Wpf.Abstractions\Len.Abp.Wpf.Abstractions.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Len.Abp.Wpf.Tests" />
 	</ItemGroup>
 
 </Project>

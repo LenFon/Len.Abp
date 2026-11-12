@@ -7,27 +7,27 @@ namespace Len.Abp.Wpf;
 internal class WpfContext : ISingletonDependency
 {
     /// <summary>
-    /// Defines if the host application is stopped when the UI applications stops
+    /// 定义 UI 应用停止时是否同时停止宿主应用。
     /// </summary>
     public bool IsLifetimeLinked { get; set; } = true;
 
     /// <summary>
-    /// Is the WPF application started and still running?
+    /// WPF 应用是否已启动并仍在运行。
     /// </summary>
     public bool IsRunning { get; set; }
 
     /// <summary>
-    /// This is the WPF ShutdownMode used for the WPF application lifetime, default is OnLastWindowClose
+    /// WPF 应用生命周期使用的关闭模式，默认为 OnLastWindowClose。
     /// </summary>
     public ShutdownMode ShutdownMode { get; set; } = ShutdownMode.OnLastWindowClose;
 
     /// <summary>
-    /// The Application
+    /// WPF 应用实例。
     /// </summary>
     public Application WpfApplication { get; set; } = default!;
 
     /// <summary>
-    /// This WPF dispatcher
+    /// WPF 调度器。
     /// </summary>
     public Dispatcher Dispatcher => WpfApplication.Dispatcher;
 }

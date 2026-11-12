@@ -11,12 +11,34 @@
     <Project Path="src/Len.Abp.Wpf.Abstractions/Len.Abp.Wpf.Abstractions.csproj" />
     <Project Path="src/Len.Abp.Wpf/Len.Abp.Wpf.csproj" />
   </Folder>
-  <Folder Name="/test/" />
+  <Folder Name="/test/">
+    <Project Path="test/Len.Abp.Analyzer.TestSupport/Len.Abp.Analyzer.TestSupport.csproj" />
+    <Project Path="test/Len.Abp.Analyzer.Tests/Len.Abp.Analyzer.Tests.csproj" />
+    <Project Path="test/Len.Abp.Analyzer.Wpf.Tests/Len.Abp.Analyzer.Wpf.Tests.csproj" />
+    <Project Path="test/Len.Abp.Core.Tests/Len.Abp.Core.Tests.csproj" />
+    <Project Path="test/Len.Abp.Wpf.Abstractions.Tests/Len.Abp.Wpf.Abstractions.Tests.csproj" />
+    <Project Path="test/Len.Abp.Wpf.Tests/Len.Abp.Wpf.Tests.csproj" />
+  </Folder>
   <Folder Name="/解决方案项/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
     <File Path="common.props" />
     <File Path="common.wpf.props" />
     <File Path="configureawait.props" />
+    <File Path="demos.props" />
+    <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
     <File Path="frameworks.props" />
+    <File Path="LICENSE.txt" />
+    <File Path="README.md" />
+    <File Path="test.props" />
+  </Folder>
+  <Folder Name="/scripts/">
+    <File Path="scripts/check-coverage.ps1" />
+    <File Path="scripts/set-version.ps1" />
+  </Folder>
+  <Folder Name="/.github/">
+    <File Path=".github/workflows/ci.yml" />
   </Folder>
 </Solution>

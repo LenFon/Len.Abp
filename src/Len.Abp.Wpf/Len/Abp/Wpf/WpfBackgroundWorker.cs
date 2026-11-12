@@ -10,6 +10,10 @@ internal class WpfBackgroundWorker : BackgroundWorkerBase
     private WpfOptions WpfOptions => LazyServiceProvider.LazyGetRequiredService<IOptions<WpfOptions>>().Value;
     private WpfContext WpfContext => LazyServiceProvider.LazyGetRequiredService<WpfContext>();
 
+    /// <summary>
+    /// 启动 WPF UI 线程。
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌。</param>
     public override async Task StartAsync(CancellationToken cancellationToken = default)
     {
         await base.StartAsync(cancellationToken);
@@ -24,6 +28,10 @@ internal class WpfBackgroundWorker : BackgroundWorkerBase
         await WpfThreadService.StartAsync();
     }
 
+    /// <summary>
+    /// 停止 WPF UI 线程。
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌。</param>
     public override async Task StopAsync(CancellationToken cancellationToken = default)
     {
         await base.StopAsync(cancellationToken);
@@ -34,7 +42,7 @@ internal class WpfBackgroundWorker : BackgroundWorkerBase
 
         if (WpfContext.IsRunning)
         {
-            Logger.LogDebug("Stopping WPF due to application exit.");
+            Logger.LogDebug("应用退出，正在停止 WPF。");
 
             await WpfContext.Dispatcher.InvokeAsync(WpfContext.WpfApplication.Shutdown);
         }

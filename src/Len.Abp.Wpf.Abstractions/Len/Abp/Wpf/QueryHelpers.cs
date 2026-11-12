@@ -3,16 +3,16 @@
 namespace Len.Abp.Wpf;
 
 /// <summary>
-/// Provides methods for parsing and manipulating query strings.
+/// 提供解析和操作查询字符串的方法。
 /// https://github.com/dotnet/aspnetcore/blob/main/src/Http/WebUtilities/src/QueryHelpers.cs
 /// </summary>
 internal static class QueryHelpers
 {
     /// <summary>
-    /// Parse a query string into its component key and value parts.
+    /// 将查询字符串解析为键和值两部分。
     /// </summary>
-    /// <param name="queryString">The raw query string value, with or without the leading '?'.</param>
-    /// <returns>A collection of parsed keys and values, null if there are no entries.</returns>
+    /// <param name="queryString">原始查询字符串，可带或不带前导的 '?'。</param>
+    /// <returns>解析后的键值集合；没有任何条目时返回 null。</returns>
     public static Dictionary<string, StringValues>? ParseNullableQuery(string? queryString)
     {
         var accumulator = new KeyValueAccumulator();

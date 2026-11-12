@@ -1,0 +1,10 @@
+<Project>
+	<!-- demos 下所有示例项目共用的设置 -->
+	<PropertyGroup>
+		<TargetFramework>net10.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<!-- 示例项目不参与打包发布 -->
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+</Project>

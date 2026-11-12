@@ -10,6 +10,9 @@ namespace WpfApp.Views;
 [View<DemoViewModel>(ViewName = "demo")]
 public partial class DemoView : UserControl
 {
+    /// <summary>
+    /// 初始化视图。
+    /// </summary>
     public DemoView()
     {
         InitializeComponent();

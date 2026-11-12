@@ -17,15 +17,32 @@ internal class WpfThreadService(
     private readonly IHostApplicationLifetime _hostApplicationLifetime = hostApplicationLifetime;
     private readonly WpfContext _uiContext = wpfContext;
 
+    /// <summary>
+    /// 在独立的 STA 线程上创建并启动 WPF 应用。
+    /// </summary>
+    /// <returns>WPF 应用创建完成后完成的任务。</returns>
     public Task StartAsync()
     {
-        var tcs = new TaskCompletionSource();
+        var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
         {
-            tcs.SetResult();
-            PreStartUiThread();
-            _uiContext.IsRunning = true;
-            StartUiThread();
+            try
+            {
+                PreStartUiThread();
+                _uiContext.IsRunning = true;
+
+                // 在 Application 创建完成后再发出信号，使调用方可以安全依赖 WpfContext.WpfApplication。
+                tcs.TrySetResult();
+
+                StartUiThread();
+            }
+            catch (Exception exception)
+            {
+                // 线程体抛出的异常无法传播给调用方：必须通过任务传递，
+                // 否则 StartAsync 会永久挂起，同时异常在后台线程上终止进程。
+                _uiContext.IsRunning = false;
+                tcs.TrySetException(exception);
+            }
         })
         {
             IsBackground = true
@@ -88,10 +105,7 @@ internal class WpfThreadService(
                 }
             };
 
-            if (_uiContext.WpfApplication.Dispatcher.Thread.ThreadState != ThreadState.Running)
-            {
-                _uiContext.WpfApplication.Run();
-            }
+            _uiContext.WpfApplication.Run();
         });
     }
 }

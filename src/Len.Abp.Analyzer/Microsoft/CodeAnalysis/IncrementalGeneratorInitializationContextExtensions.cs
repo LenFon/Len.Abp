@@ -3,15 +3,15 @@
 namespace Microsoft.CodeAnalysis;
 
 /// <summary>
-/// Extensions for <see cref="IncrementalGeneratorInitializationContext"/>.
+/// <see cref="IncrementalGeneratorInitializationContext"/> 的扩展方法。
 /// </summary>
 public static class IncrementalGeneratorInitializationContextExtensions
 {
     /// <summary>
-    /// Get the version of the RecognizeFramework from the analyzer config options.
+    /// 从分析器配置选项中获取生成器程序集的版本号。
     /// </summary>
-    /// <param name="context"></param>
-    /// <returns></returns>
+    /// <param name="context">增量生成器初始化上下文。</param>
+    /// <returns>生成器程序集的版本号。</returns>
     public static IncrementalValueProvider<string> GetVersion(this IncrementalGeneratorInitializationContext context)
     {
         var version = $"{Assembly.GetCallingAssembly().GetName().Version}";

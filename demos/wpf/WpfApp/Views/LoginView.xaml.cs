@@ -10,6 +10,9 @@ namespace WpfApp.Views;
 [View<LoginViewModel>(ViewName = "login")]
 public partial class LoginView : UserControl
 {
+    /// <summary>
+    /// 初始化视图。
+    /// </summary>
     public LoginView()
     {
         InitializeComponent();

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<Import Project="../../frameworks.props" />
+	<Import Project="../../common.props" />
+	<Import Project="../../test.props" />
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\Len.Abp.Analyzer\Len.Abp.Analyzer.csproj" />
+		<ProjectReference Include="..\Len.Abp.Analyzer.TestSupport\Len.Abp.Analyzer.TestSupport.csproj" />
+	</ItemGroup>
+
+</Project>

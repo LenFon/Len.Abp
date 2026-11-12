@@ -4,13 +4,20 @@ using Volo.Abp.DependencyInjection;
 
 namespace Len.Abp.Wpf.Navigation.Regions.Behaviors;
 
+/// <summary>
+/// 区域行为：视图失活时，若其视图模型声明 <see cref="IRegionMemberLifetime.KeepAlive"/> 为 false，
+/// 则从区域中移除该视图。
+/// </summary>
+/// <param name="regionProvider">区域提供程序。</param>
 [ExposeKeyedService<IRegionBehavior>(nameof(RegionMemberLifetimeBehavior))]
 public class RegionMemberLifetimeBehavior(IRegionProvider regionProvider) : IRegionBehavior, ITransientDependency
 {
     private readonly IRegionProvider _regionProvider = regionProvider;
 
+    /// <inheritdoc/>
     public IRegion Region { get; set; } = default!;
 
+    /// <inheritdoc/>
     public void Attach() => Region.ActiveViews.CollectionChanged += ActiveViews_CollectionChanged;
 
     private static bool ShouldKeepAlive(IView view) => view.ViewModel is not IRegionMemberLifetime lifetime || lifetime.KeepAlive;

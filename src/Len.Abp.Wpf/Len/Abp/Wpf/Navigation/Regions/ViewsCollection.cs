@@ -5,76 +5,73 @@ using System.Collections.Specialized;
 
 namespace Len.Abp.Wpf.Navigation.Regions;
 
+/// <summary>
+/// <see cref="IViewsCollection"/> 的默认实现，按过滤条件实时维护视图列表。
+/// </summary>
 internal sealed class ViewsCollection : IViewsCollection
 {
     private readonly Predicate<RegionMetadata> _filter;
     private readonly ObservableCollection<RegionMetadata> _items;
-    private readonly Dictionary<RegionMetadata, MonitorInfo> _monitoredItems = [];
+    private readonly HashSet<RegionMetadata> _monitoredItems = [];
     private List<IView> _filteredItems = [];
 
+    /// <summary>
+    /// 初始化视图集合。
+    /// </summary>
+    /// <param name="items">区域元数据集合。</param>
+    /// <param name="filter">决定元数据是否包含在集合中的过滤条件。</param>
     public ViewsCollection(ObservableCollection<RegionMetadata> items, Predicate<RegionMetadata> filter)
     {
         _items = items;
         _filter = filter;
         MonitorAllMetadataItems();
+        UpdateFilteredItemsList();
         _items.CollectionChanged += OnItemsCollectionChanged;
     }
 
+    /// <inheritdoc/>
     public event NotifyCollectionChangedEventHandler? CollectionChanged;
 
+    /// <inheritdoc/>
     public int Count => _filteredItems.Count;
 
+    /// <inheritdoc/>
     public bool Contains(IView value) => _filteredItems.Contains(value);
 
+    /// <inheritdoc/>
     public IEnumerator<IView> GetEnumerator() => _filteredItems.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-    private void AddMetadataMonitor(RegionMetadata itemMetadata, bool isInList)
-    {
-        itemMetadata.MetadataChanged += OnMetadataChanged;
-        _monitoredItems.Add(itemMetadata, new() { IsInList = isInList });
-    }
 
     private void MonitorAllMetadataItems()
     {
         foreach (var item in _items)
         {
-            AddMetadataMonitor(item, _filter(item));
+            AddMetadataMonitor(item);
         }
     }
 
-    private void NotifyAdd(IView item)
+    private void AddMetadataMonitor(RegionMetadata itemMetadata)
     {
-        var newIndex = _filteredItems.IndexOf(item);
-
-        NotifyAdd(new[] { item }, newIndex);
+        itemMetadata.MetadataChanged += OnMetadataChanged;
+        _monitoredItems.Add(itemMetadata);
     }
 
-    private void NotifyAdd(IList items, int newStartingIndex)
+    private void RemoveMetadataMonitor(RegionMetadata itemMetadata)
     {
-        if (items.Count <= 0) return;
-
-        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, items, newStartingIndex));
+        itemMetadata.MetadataChanged -= OnMetadataChanged;
+        _monitoredItems.Remove(itemMetadata);
     }
 
-    private void NotifyRemove(IList items, int originalIndex)
+    private void ResetAllMonitors()
     {
-        if (items.Count <= 0) return;
+        foreach (var item in _monitoredItems)
+        {
+            item.MetadataChanged -= OnMetadataChanged;
+        }
 
-        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, items, originalIndex));
-    }
-
-    private void NotifyReset()
-    {
-        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-    }
-
-    private void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
-    {
-        var handler = CollectionChanged;
-
-        handler?.Invoke(this, e);
+        _monitoredItems.Clear();
+        MonitorAllMetadataItems();
     }
 
     private void OnItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -85,10 +82,8 @@ internal sealed class ViewsCollection : IViewsCollection
                 UpdateFilteredItemsList();
                 foreach (RegionMetadata itemMetadata in e.NewItems!)
                 {
-                    bool isInFilter = _filter(itemMetadata);
-
-                    AddMetadataMonitor(itemMetadata, isInFilter);
-                    if (isInFilter)
+                    AddMetadataMonitor(itemMetadata);
+                    if (_filter(itemMetadata))
                     {
                         NotifyAdd(itemMetadata.Item);
                     }
@@ -101,7 +96,7 @@ internal sealed class ViewsCollection : IViewsCollection
                     RemoveMetadataMonitor(itemMetadata);
                     if (_filter(itemMetadata))
                     {
-                        RemoveFromFilteredList(itemMetadata.Item);
+                        NotifyRemove(itemMetadata.Item);
                     }
                 }
                 break;
@@ -116,63 +111,51 @@ internal sealed class ViewsCollection : IViewsCollection
 
     private void OnMetadataChanged(object? sender, EventArgs e)
     {
-        if (sender is not RegionMetadata itemMetadata)
-            return;
-
-        if (!_monitoredItems.TryGetValue(itemMetadata, out var monitorInfo))
+        if (sender is not RegionMetadata itemMetadata || !_monitoredItems.Contains(itemMetadata))
         {
             return;
         }
 
         if (_filter(itemMetadata))
         {
-            if (monitorInfo.IsInList) return;
+            if (_filteredItems.Contains(itemMetadata.Item))
+            {
+                return;
+            }
 
-            monitorInfo.IsInList = true;
             UpdateFilteredItemsList();
             NotifyAdd(itemMetadata.Item);
         }
         else
         {
-            monitorInfo.IsInList = false;
-            RemoveFromFilteredList(itemMetadata.Item);
+            NotifyRemove(itemMetadata.Item);
         }
     }
 
-    private void RemoveAllMetadataMonitors()
+    /// <summary>
+    /// 先更新过滤列表再通知，使订阅者按新索引接收变更。
+    /// </summary>
+    private void NotifyAdd(IView item)
     {
-        foreach (var item in _monitoredItems)
-        {
-            item.Key.MetadataChanged -= OnMetadataChanged;
-        }
-
-        _monitoredItems.Clear();
+        UpdateFilteredItemsList();
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, _filteredItems.IndexOf(item)));
     }
 
-    private void RemoveFromFilteredList(IView item)
+    /// <summary>
+    /// 先记录旧索引再更新过滤列表，使订阅者按移除前的位置接收变更。
+    /// </summary>
+    private void NotifyRemove(IView item)
     {
         var index = _filteredItems.IndexOf(item);
         UpdateFilteredItemsList();
-        NotifyRemove(new[] { item }, index);
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item, index));
     }
 
-    private void RemoveMetadataMonitor(RegionMetadata itemMetadata)
-    {
-        itemMetadata.MetadataChanged -= OnMetadataChanged;
-        _monitoredItems.Remove(itemMetadata);
-    }
+    private void NotifyReset() =>
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
 
-    private void ResetAllMonitors()
-    {
-        RemoveAllMetadataMonitors();
-        MonitorAllMetadataItems();
-    }
+    private void OnCollectionChanged(NotifyCollectionChangedEventArgs e) => CollectionChanged?.Invoke(this, e);
 
     private void UpdateFilteredItemsList() =>
         _filteredItems = [.. _items.Where(w => _filter(w)).Select(s => s.Item).OrderBy(o => o.ViewName)];
-
-    private class MonitorInfo
-    {
-        public bool IsInList { get; set; }
-    }
 }
