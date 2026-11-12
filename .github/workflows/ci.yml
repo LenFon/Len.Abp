@@ -46,6 +46,16 @@ jobs:
         shell: pwsh
         run: ./scripts/check-coverage.ps1 -Path ./coverage -Threshold 90
 
+      - name: 上传覆盖率到 Codecov
+        if: always()
+        uses: codecov/codecov-action@v7
+        with:
+          # 多个测试项目各产出一份报告，Codecov 会递归搜索并按提交合并
+          directory: ./coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
+          # 未配置 token 时不让构建失败，仅在日志中报错
+          fail_ci_if_error: false
+
       - name: 上传测试结果
         if: always()
         uses: actions/upload-artifact@v7
