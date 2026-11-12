@@ -63,19 +63,20 @@ public class NestedRegionReclamationTests
     /// 若写在测试方法内，Debug 构建的栈槽会一直持有最深一层的区域，干扰回收断言。
     /// </remarks>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static List<(DisposableView View, RegionImpl Region)> BuildChain(
+    private static List<(DisposableView View, SingleActiveRegion Region)> BuildChain(
         RegionProvider provider,
         RegionImpl rootRegion,
         int depthCount
     )
     {
-        var levels = new List<(DisposableView View, RegionImpl Region)>();
-        var parent = rootRegion;
+        var levels = new List<(DisposableView View, SingleActiveRegion Region)>();
+        RegionImpl parent = rootRegion;
 
         for (var depth = 1; depth <= depthCount; depth++)
         {
             var view = new DisposableView($"level{depth}", new DisposableViewModel());
-            var region = new RegionImpl($"Level{depth}Region", view.ViewName, view);
+            // 与生产一致：内容控件区域同一时刻只有一个活动视图，切换时旧视图会自动失活。
+            var region = new SingleActiveRegion($"Level{depth}Region", view.ViewName, view);
             parent.Add(view);
             provider.Add(region);
             AttachLifetimeBehavior(parent, provider);
@@ -149,6 +150,79 @@ public class NestedRegionReclamationTests
         Assert.Same(rootRegion, Assert.Single(provider.Regions));
 
         return (viewRefs, viewModelRefs);
+    }
+
+    /// <summary>
+    /// 在第 4 层切换子区域视图时，只拆除第 5 层及以下，第 1 到第 4 层保持存活。
+    /// </summary>
+    /// <remarks>
+    /// 这是「局部切换」的核心语义：拆除范围由失活视图决定，而不是整棵树。
+    /// 若实现误把整棵子树拆掉，第 1 到第 4 层会一起消失，用户会看到上层界面被清空。
+    /// </remarks>
+    [Fact]
+    public async Task SwitchChildAtLevel4_RemovesOnlyDeeperLevels()
+    {
+        var (service, provider, rootRegion) = CreateService();
+
+        var (deeperViewRefs, deeperViewModelRefs, shallowerViewRefs) =
+            await RunLevel4SwitchScenarioAsync(service, provider, rootRegion);
+
+        CollectGarbage();
+
+        Assert.All(shallowerViewRefs, reference => Assert.True(reference.IsAlive));
+        Assert.All(deeperViewRefs, reference => Assert.False(reference.IsAlive));
+        Assert.All(deeperViewModelRefs, reference => Assert.False(reference.IsAlive));
+    }
+
+    /// <summary>
+    /// 建链、导航到第 8 层、在第 4 层切换子区域视图，并断言区域拆除范围。
+    /// </summary>
+    /// <returns>深层与浅层实例的弱引用。</returns>
+    /// <remarks>
+    /// 整个场景放在独立方法里，测试方法不持有任何视图或区域引用，
+    /// 否则 Debug 构建的栈槽会让最深一层的实例无法回收，干扰断言。
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static async Task<(WeakReference[] DeeperViews, WeakReference[] DeeperViewModels, WeakReference[] ShallowerViews)>
+        RunLevel4SwitchScenarioAsync(NavigationService service, RegionProvider provider, RegionImpl rootRegion)
+    {
+        var levels = BuildChain(provider, rootRegion, 8);
+
+        // 逐层导航到第 8 层。
+        Assert.True((await service.NavigateAsync("MainRegion", "level1", IParameters.Create())).Result);
+        for (var depth = 1; depth < 8; depth++)
+        {
+            Assert.True((await service.NavigateAsync($"Level{depth}Region", $"level{depth + 1}", IParameters.Create())).Result);
+        }
+
+        Assert.Equal(9, provider.Regions.Count);
+
+        var level4View = levels[3].View;
+        var level4Region = levels[3].Region;
+        var level3Region = levels[2].Region;
+
+        // 第 4 层区域里换成替代视图，触发第 5 层失活。
+        level4Region.Add(new DisposableView("alternate", new DisposableViewModel()));
+
+        var deeperViewRefs = levels.Skip(4).Select(level => new WeakReference(level.View)).ToArray();
+        var deeperViewModelRefs = levels.Skip(4).Select(level => new WeakReference(level.View.ViewModel)).ToArray();
+        var shallowerViewRefs = levels.Take(4).Select(level => new WeakReference(level.View)).ToArray();
+
+        Assert.True((await service.NavigateAsync("Level4Region", "alternate", IParameters.Create())).Result);
+
+        // 第 5 到第 8 层的区域应被拆除，第 1 到第 4 层的区域保留。
+        Assert.Equal(5, provider.Regions.Count);
+        Assert.Contains(level4Region, provider.Regions);
+        for (var depth = 4; depth < 8; depth++)
+        {
+            Assert.DoesNotContain(levels[depth].Region, provider.Regions);
+        }
+
+        // 第 4 层视图仍留在它的父区域（第 3 层区域）中且未释放。
+        Assert.Contains(level4View, level3Region.Views);
+        Assert.False(level4View.IsDisposed);
+
+        return (deeperViewRefs, deeperViewModelRefs, shallowerViewRefs);
     }
 
     /// <summary>

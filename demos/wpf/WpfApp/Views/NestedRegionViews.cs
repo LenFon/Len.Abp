@@ -146,3 +146,16 @@ public partial class NestedLeafView : NestedRegionView
     public NestedLeafView() =>
         Configure("嵌套区域 · 第 8 层", null);
 }
+
+/// <summary>
+/// 替代视图，用于替换某一层的子区域内容，自身不含子区域。
+/// </summary>
+[View<NestedAlternateViewModel>(ViewName = NestedAlternateViewModel.ViewName)]
+public partial class NestedAlternateView : NestedRegionView
+{
+    /// <summary>
+    /// 初始化视图。
+    /// </summary>
+    public NestedAlternateView() =>
+        Configure("替代视图（无子区域）", null);
+}

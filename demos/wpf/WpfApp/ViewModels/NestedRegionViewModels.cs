@@ -103,6 +103,24 @@ public abstract partial class NestedRegionViewModelBase(
     }
 
     /// <summary>
+    /// 把子区域切换到替代视图，用于验证只拆除被替换的那部分子树。
+    /// </summary>
+    /// <remarks>
+    /// 例如在第 4 层点击时，NestedLevel4Region 里的第 5 层被替换，
+    /// 第 5 到第 8 层应被拆除，而第 1 到第 4 层保持存活。
+    /// </remarks>
+    [RelayCommand]
+    private async Task SwitchChildAsync()
+    {
+        if (ChildRegionName is null)
+        {
+            return;
+        }
+
+        await navigationService.NavigateAsync(ChildRegionName, NestedAlternateViewModel.ViewName, IParameters.Create());
+    }
+
+    /// <summary>
     /// 退出到画廊，销毁整棵嵌套子树。
     /// </summary>
     [RelayCommand]
@@ -170,3 +188,18 @@ public class NestedLevel6ViewModel(INavigationService navigationService)
 /// </summary>
 public class NestedLeafViewModel(INavigationService navigationService)
     : NestedRegionViewModelBase(navigationService, 8, null, null);
+
+/// <summary>
+/// 替代视图的视图模型，用于替换某一层的子区域内容。
+/// </summary>
+/// <remarks>
+/// 它没有子区域，所以替换后该层以下的整棵子树都会被拆除。
+/// </remarks>
+public class NestedAlternateViewModel(INavigationService navigationService)
+    : NestedRegionViewModelBase(navigationService, 0, null, null)
+{
+    /// <summary>
+    /// 获取替代视图的视图名称。
+    /// </summary>
+    public const string ViewName = "nested-alternate";
+}
