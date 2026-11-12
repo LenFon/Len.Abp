@@ -3,6 +3,8 @@
 	<PropertyGroup>
 		<IsPackable>false</IsPackable>
 		<IsTestProject>true</IsTestProject>
+		<!-- 统一使用仓库根的覆盖率配置，排除 test 下所有项目 -->
+		<RunSettingsFilePath>$(MSBuildThisFileDirectory)coverage.runsettings</RunSettingsFilePath>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+	<!--
+		覆盖率采集配置。test 下的项目只用于验证 src，不计入覆盖率统计：
+		测试项目自身由 coverlet 默认排除，测试支持库（如 Analyzer.TestSupport）
+		需要按路径显式排除。
+	-->
+	<DataCollectionRunSettings>
+		<DataCollectors>
+			<DataCollector friendlyName="XPlat code coverage">
+				<Configuration>
+					<Format>cobertura</Format>
+					<ExcludeByFile>**/test/**/*.cs</ExcludeByFile>
+				</Configuration>
+			</DataCollector>
+		</DataCollectors>
+	</DataCollectionRunSettings>
+</RunSettings>

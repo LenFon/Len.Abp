@@ -74,6 +74,112 @@ public class IncrementalValuesProviderExtensionsTests
         Assert.Contains("// generated", sources[0].Text);
     }
 
+    /// <summary>
+    /// 单值提供程序返回非空文件时添加源文件。
+    /// </summary>
+    [Fact]
+    public void AddSource_SingleValue_NonEmptyFile_IsAdded()
+    {
+        var (sources, diagnostics) = RunGenerator(
+            new SingleFileGenerator("// single"),
+            """
+            namespace Demo
+            {
+                [global::Len.Abp.Analyzer.Tests.IncrementalValuesProviderExtensionsTests.MarkerAttribute]
+                public partial class Sample { }
+            }
+            """
+        );
+
+        Assert.Single(sources);
+        Assert.Contains("// single", sources[0].Text);
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+    }
+
+    /// <summary>
+    /// 单值提供程序返回空文件时不添加源文件。
+    /// </summary>
+    [Fact]
+    public void AddSource_SingleValue_EmptyFile_IsSkipped()
+    {
+        var (sources, diagnostics) = RunGenerator(
+            new SingleFileGenerator(string.Empty),
+            """
+            namespace Demo
+            {
+                [global::Len.Abp.Analyzer.Tests.IncrementalValuesProviderExtensionsTests.MarkerAttribute]
+                public partial class Sample { }
+            }
+            """
+        );
+
+        Assert.Empty(sources);
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+    }
+
+    /// <summary>
+    /// 单值选择器抛出的异常被报告为编译诊断；单值重载不丢弃值，仍输出默认值。
+    /// </summary>
+    [Fact]
+    public void SelectAndReportExceptions_SingleValueThrowingSelector_ReportsDiagnostic()
+    {
+        var (sources, diagnostics) = RunGenerator(
+            new SingleValueThrowingGenerator(),
+            """
+            namespace Demo
+            {
+                [global::Len.Abp.Analyzer.Tests.IncrementalValuesProviderExtensionsTests.MarkerAttribute]
+                public partial class Sample { }
+            }
+            """
+        );
+
+        Assert.Contains(diagnostics, d => d.Id == "TEST004" && d.Severity == DiagnosticSeverity.Error);
+        Assert.Single(sources);
+    }
+
+    /// <summary>
+    /// 多值选择器（不接收取消令牌）抛出的异常被报告为编译诊断，且该值被过滤。
+    /// </summary>
+    [Fact]
+    public void SelectAndReportExceptions_ValuesSelectorWithoutToken_ReportsDiagnostic()
+    {
+        var (sources, diagnostics) = RunGenerator(
+            new ValuesThrowingGeneratorWithoutToken(),
+            """
+            namespace Demo
+            {
+                [global::Len.Abp.Analyzer.Tests.IncrementalValuesProviderExtensionsTests.MarkerAttribute]
+                public partial class Sample { }
+            }
+            """
+        );
+
+        Assert.Empty(sources);
+        Assert.Contains(diagnostics, d => d.Id == "TEST005" && d.Severity == DiagnosticSeverity.Error);
+    }
+
+    /// <summary>
+    /// 单值选择器（不接收取消令牌）抛出的异常被报告为编译诊断。
+    /// </summary>
+    [Fact]
+    public void SelectAndReportExceptions_SingleValueSelectorWithoutToken_ReportsDiagnostic()
+    {
+        var (sources, diagnostics) = RunGenerator(
+            new SingleValueThrowingGeneratorWithoutToken(),
+            """
+            namespace Demo
+            {
+                [global::Len.Abp.Analyzer.Tests.IncrementalValuesProviderExtensionsTests.MarkerAttribute]
+                public partial class Sample { }
+            }
+            """
+        );
+
+        Assert.Contains(diagnostics, d => d.Id == "TEST006" && d.Severity == DiagnosticSeverity.Error);
+        Assert.Single(sources);
+    }
+
     private static (IReadOnlyList<GeneratedSource> Sources, IReadOnlyList<Diagnostic> Diagnostics) RunGenerator(
         IIncrementalGenerator generator,
         string source
@@ -141,5 +247,68 @@ public class IncrementalValuesProviderExtensionsTests
 
         protected override (ClassData Class, object Data, string Version)? PrepareData((ClassContext, string) context) =>
             (context.Item1.ClassSymbol.GetClassData(), new object(), context.Item2);
+    }
+
+    /// <summary>
+    /// 通过单值提供程序输出一个文件，用于覆盖 <c>AddSource(IncrementalValueProvider)</c>。
+    /// </summary>
+    private sealed class SingleFileGenerator(string text) : IIncrementalGenerator
+    {
+        public void Initialize(IncrementalGeneratorInitializationContext context)
+        {
+            var file = context.CompilationProvider.Select((_, _) => new FileWithName("single.g.cs", text));
+
+            file.AddSource(context);
+        }
+    }
+
+    /// <summary>
+    /// 单值选择器抛异常的生成器。
+    /// </summary>
+    private sealed class SingleValueThrowingGenerator : IIncrementalGenerator
+    {
+        public void Initialize(IncrementalGeneratorInitializationContext context)
+        {
+            var value = context.CompilationProvider
+                .Select((_, _) => 0)
+                .SelectAndReportExceptions<int, int>((_, _) => throw new InvalidOperationException("单值失败"), context, "TEST004")
+                .Select((x, _) => new FileWithName("x.g.cs", x.ToString()));
+
+            value.AddSource(context);
+        }
+    }
+
+    /// <summary>
+    /// 多值选择器（不接收取消令牌）抛异常的生成器。
+    /// </summary>
+    private sealed class ValuesThrowingGeneratorWithoutToken : IIncrementalGenerator
+    {
+        private static readonly int[] SingleValueSource = [1];
+
+        public void Initialize(IncrementalGeneratorInitializationContext context)
+        {
+            var values = context.CompilationProvider
+                .SelectMany((_, _) => SingleValueSource)
+                .SelectAndReportExceptions<int, int>(_ => throw new InvalidOperationException("多值失败"), context, "TEST005")
+                .Select((x, _) => new FileWithName("x.g.cs", x.ToString()));
+
+            values.AddSource(context);
+        }
+    }
+
+    /// <summary>
+    /// 单值选择器（不接收取消令牌）抛异常的生成器。
+    /// </summary>
+    private sealed class SingleValueThrowingGeneratorWithoutToken : IIncrementalGenerator
+    {
+        public void Initialize(IncrementalGeneratorInitializationContext context)
+        {
+            var value = context.CompilationProvider
+                .Select((_, _) => 0)
+                .SelectAndReportExceptions<int, int>(_ => throw new InvalidOperationException("单值失败"), context, "TEST006")
+                .Select((x, _) => new FileWithName("x.g.cs", x.ToString()));
+
+            value.AddSource(context);
+        }
     }
 }

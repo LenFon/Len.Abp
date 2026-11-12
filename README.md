@@ -1,5 +1,7 @@
 # Len.Abp
 
+[![codecov](https://codecov.io/gh/LenFon/Len.Abp/branch/main/graph/badge.svg)](https://codecov.io/gh/LenFon/Len.Abp)
+
 基于 [ABP Framework](https://abp.io) 的 WPF 桌面应用开发框架。用 Roslyn 源生成器消除 WPF 样板代码，用 ABP 的模块化与依赖注入体系承载 WPF 应用，并提供一套 Prism 风格的区域导航。
 
 ## 特性
