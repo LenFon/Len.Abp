@@ -1,0 +1,46 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{cs,csx}]
+indent_style = space
+indent_size = 4
+
+[*.{xml,props,targets,csproj,slnx,xaml,config,yml,yaml}]
+indent_style = space
+indent_size = 4
+
+[*.{json,md}]
+indent_style = space
+indent_size = 2
+
+[*.cs]
+# 主构造函数：构造函数只做参数传递时使用主构造函数。
+csharp_style_prefer_primary_constructors = true:error
+dotnet_diagnostic.IDE0290.severity = error
+
+# 未使用的赋值。
+dotnet_diagnostic.IDE0059.severity = error
+
+# 简化范围表达式。
+dotnet_diagnostic.IDE0057.severity = error
+
+# 命名规则：私有字段使用 _camelCase，其余使用 PascalCase。
+dotnet_diagnostic.IDE1006.severity = error
+
+# 集合初始化简化。
+dotnet_diagnostic.IDE0028.severity = error
+dotnet_diagnostic.IDE0301.severity = error
+dotnet_diagnostic.IDE0305.severity = error
+
+# 性能规则。
+dotnet_diagnostic.CA1859.severity = error
+dotnet_diagnostic.CA1861.severity = error
+dotnet_diagnostic.CA2263.severity = error
+
+# xUnit 理论数据必须可序列化，否则 Test Explorer 无法逐行枚举。
+dotnet_diagnostic.xUnit1044.severity = error
