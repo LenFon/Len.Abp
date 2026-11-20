@@ -72,3 +72,30 @@ dotnet_diagnostic.CA2263.severity = error
 
 # xUnit 理论数据必须可序列化，否则 Test Explorer 无法逐行枚举。
 dotnet_diagnostic.xUnit1044.severity = error
+
+# 以下规则默认只是提示（Message），在 IDE 里容易被忽略。
+# 统一提升为 error，让它们在命令行构建中直接失败，避免问题长期堆积。
+#
+# 元组元素已有显式名称时，用名称访问而不是 Item1/Item2。
+dotnet_diagnostic.IDE0033.severity = error
+
+# 用 System.Threading.Lock 替代 object 作为锁对象（.NET 9+ 专用锁类型）。
+dotnet_diagnostic.IDE0330.severity = error
+
+# 删除未使用的参数。
+dotnet_diagnostic.IDE0060.severity = error
+
+# 日志调用的参数在日志被禁用时仍会被求值，可能产生不必要的开销。
+dotnet_diagnostic.CA1873.severity = error
+
+# Assert.IsAssignableFrom 的命名容易误导，改用 Assert.IsType 的精确匹配重载。
+dotnet_diagnostic.xUnit2032.severity = error
+
+# XML 注释中的 cref 必须能解析，否则文档里会出现断链。
+dotnet_diagnostic.CS1574.severity = error
+
+# 可空性：向不可空形参传入可能为 null 的实参。
+dotnet_diagnostic.CS8604.severity = error
+
+# 主构造函数参数同时被捕获进状态又用于初始化字段/属性，会产生两份副本。
+dotnet_diagnostic.CS9124.severity = error
