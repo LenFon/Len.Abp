@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<Import Project="../../../samples.props" />
+
+	<PropertyGroup>
+		<UseWPF>true</UseWPF>
+		<LangVersion>preview</LangVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="CommunityToolkit.Mvvm" />
+		<PackageReference Include="MaterialDesignThemes.MahApps" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\src\Len.Abp.Analyzer\Len.Abp.Analyzer.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\..\..\src\Len.Abp.Wpf.Abstractions\Len.Abp.Wpf.Abstractions.csproj" />
+		<ProjectReference Include="..\..\..\src\Len.Abp.Analyzer.Wpf\Len.Abp.Analyzer.Wpf.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<!-- 自定义区域适配器与区域行为需要运行时程序集里的扩展点。 -->
+		<ProjectReference Include="..\..\..\src\Len.Abp.Wpf\Len.Abp.Wpf.csproj" />
+		<ProjectReference Include="..\WpfApp.Controls\WpfApp.Controls.csproj" />
+	</ItemGroup>
+
+</Project>
+

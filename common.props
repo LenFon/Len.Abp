@@ -24,7 +24,24 @@
 		<PackageProjectUrl>https://github.com/LenFon/Len.Abp</PackageProjectUrl>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+		<!--
+			每个可打包项目在自己目录下提供 PACKAGE.md，内容面向该包的使用者。
+			用 Condition 判断而不是统一指向仓库根 README：包说明是包自己的文档，
+			不同包的安装方式、API 与注意事项都不同，共用一份只会让每个包都写得很泛。
+		-->
+		<PackageReadmeFile Condition="Exists('$(MSBuildProjectDirectory)\PACKAGE.md')">PACKAGE.md</PackageReadmeFile>
 	</PropertyGroup>
+
+	<!--
+		PACKAGE.md 由 SDK 的默认 glob 纳入 None 项，但默认项不带打包元数据。
+		这里先移除默认项再显式 Include：只用 Update 修改元数据时，
+		NuGet 打包阶段读不到 Pack/PackagePath，会报 NU5039。
+		不设 Visible="false"——包说明是项目的一部分，应在 IDE 里可见可编辑。
+	-->
+	<ItemGroup Condition="Exists('$(MSBuildProjectDirectory)\PACKAGE.md')">
+		<None Remove="PACKAGE.md" />
+		<None Include="PACKAGE.md" Pack="true" PackagePath="\" />
+	</ItemGroup>
 
 	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -32,6 +49,20 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.SourceLink.GitHub">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<!--
+			显式引用代码风格分析器，让构建与 VS 的 IDE 诊断保持一致。
+			SDK 自带版本落后于 VS，同一段代码会出现「IDE 报错、构建通过」。
+			分析器要求 Roslyn 5.12，旧版 SDK 自带的编译器低于该版本，
+			因此同时升级编译器工具集；只作为构建期依赖，不进入运行时。
+		-->
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeStyle">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.Net.Compilers.Toolset">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>

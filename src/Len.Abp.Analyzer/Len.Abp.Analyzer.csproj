@@ -7,6 +7,9 @@
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 		<PackageId>Len.Abp.Analyzer</PackageId>
 		<Description>Roslyn 增量源生成器的通用基础设施，供 WPF 生成器复用。</Description>
+		<!-- 不含任何 [Generator]，只作为 Len.Abp.Analyzer.Wpf 的依赖程序集被引用；
+		     发布独立包只会让使用者误以为它可用。 -->
+		<IsPackable>false</IsPackable>
 	</PropertyGroup>
 
 	<ItemGroup>

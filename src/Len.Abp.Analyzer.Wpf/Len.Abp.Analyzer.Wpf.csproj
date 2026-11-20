@@ -9,23 +9,16 @@
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<PackageId>Len.Abp.Analyzer.Wpf</PackageId>
 		<Description>WPF 源生成器：依赖属性、附加属性、路由事件与 MVVM 视图。</Description>
-		<!-- 分析器包只含 analyzers/ 目录，不提供 lib/，声明依赖组会触发 NU5128 -->
-		<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-		<NoWarn>$(NoWarn);NU5128</NoWarn>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-		<IncludeBuildOutput>false</IncludeBuildOutput>
-		<DevelopmentDependency>true</DevelopmentDependency>
+		<!-- 产物已打进 Len.Abp.Wpf 包的 analyzers/dotnet/cs。
+		     独立包缺少对 Len.Abp.Wpf.Abstractions 的依赖，单独安装后特性类型不可用，
+		     属于"能装但装了没用"，因此不再发布。 -->
+		<IsPackable>false</IsPackable>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="PolySharp">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-	</ItemGroup>
-	<ItemGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-		<None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-		<None Include="$(OutputPath)\Len.Abp.Analyzer.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Len.Abp.Analyzer\Len.Abp.Analyzer.csproj"  PrivateAssets="All"/>

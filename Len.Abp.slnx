@@ -1,9 +1,13 @@
 <Solution>
-  <Folder Name="/demos/" />
-  <Folder Name="/demos/wpf/">
-    <Project Path="demos/wpf/WpfApp.Controls/WpfApp.Controls.csproj" />
-    <Project Path="demos/wpf/WpfApp.Host/WpfApp.Host.csproj" />
-    <Project Path="demos/wpf/WpfApp/WpfApp.csproj" />
+  <Folder Name="/samples/" />
+  <Folder Name="/samples/minimal/">
+    <Project Path="samples/minimal/MinimalApp.Host/MinimalApp.Host.csproj" />
+    <Project Path="samples/minimal/MinimalApp/MinimalApp.csproj" />
+  </Folder>
+  <Folder Name="/samples/advanced/">
+    <Project Path="samples/advanced/WpfApp.Controls/WpfApp.Controls.csproj" />
+    <Project Path="samples/advanced/WpfApp.Host/WpfApp.Host.csproj" />
+    <Project Path="samples/advanced/WpfApp/WpfApp.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Len.Abp.Analyzer.Wpf/Len.Abp.Analyzer.Wpf.csproj" />
@@ -27,13 +31,18 @@
     <File Path="common.props" />
     <File Path="common.wpf.props" />
     <File Path="configureawait.props" />
-    <File Path="demos.props" />
+    <File Path="CONTRIBUTING.md" />
+    <File Path="samples.props" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
     <File Path="frameworks.props" />
     <File Path="LICENSE.txt" />
     <File Path="README.md" />
+    <File Path="ROADMAP.md" />
     <File Path="test.props" />
+  </Folder>
+  <Folder Name="/docs/">
+    <File Path="docs/USER-GUIDE.md" />
   </Folder>
   <Folder Name="/scripts/">
     <File Path="scripts/check-coverage.ps1" />

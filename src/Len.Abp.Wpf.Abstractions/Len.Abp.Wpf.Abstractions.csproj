@@ -13,6 +13,7 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Len.Abp.Wpf.Abstractions.Tests" />
+		<InternalsVisibleTo Include="Len.Abp.Wpf.Tests" />
 	</ItemGroup>
 
 </Project>

@@ -17,7 +17,55 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<!-- 构建期把生成器挂到本项目的编译上；不引用其程序集，避免 Roslyn 依赖进入运行时。
+		     Len.Abp.Analyzer 必须单独列出：OutputItemType=Analyzer 不会传递项目引用依赖，
+		     否则分析器加载时找不到 Len.Abp.Analyzer.dll（CS8032）。 -->
+		<ProjectReference Include="..\Len.Abp.Analyzer.Wpf\Len.Abp.Analyzer.Wpf.csproj"
+		                  OutputItemType="Analyzer"
+		                  ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\Len.Abp.Analyzer\Len.Abp.Analyzer.csproj"
+		                  OutputItemType="Analyzer"
+		                  ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<InternalsVisibleTo Include="Len.Abp.Wpf.Tests" />
 	</ItemGroup>
+
+	<!--
+		把两个分析器 DLL 打进本包的 analyzers/dotnet/cs。
+		不能直接用 $(OutputPath)\Len.Abp.Analyzer.Wpf.dll：跨 TFM 的 ProjectReference
+		只把分析器挂到编译上，不会复制到输出目录（实测输出目录里没有这两个 DLL）。
+		也不能在 GenerateNuspec 之前追加 None 项——打包内容在那之前已收集完毕。
+		正确做法是挂到 SDK 提供的 TargetsForTfmSpecificContentInPackage 扩展点。
+	-->
+	<PropertyGroup>
+		<TargetsForTfmSpecificContentInPackage>
+			$(TargetsForTfmSpecificContentInPackage);CollectAnalyzerPackages
+		</TargetsForTfmSpecificContentInPackage>
+	</PropertyGroup>
+
+	<Target Name="CollectAnalyzerPackages">
+		<!--
+			必须 RemoveProperties 掉 TargetFramework：MSBuild 任务会继承外层的全局属性，
+			分析器项目是 netstandard2.0，按 net10.0-windows 还原会报 NETSDK1005。
+		-->
+		<MSBuild Projects="..\Len.Abp.Analyzer.Wpf\Len.Abp.Analyzer.Wpf.csproj"
+		         Targets="Build"
+		         Properties="Configuration=$(Configuration)"
+		         RemoveProperties="TargetFramework;TargetFrameworks">
+			<Output TaskParameter="TargetOutputs" ItemName="_AnalyzerAssembly" />
+		</MSBuild>
+		<MSBuild Projects="..\Len.Abp.Analyzer\Len.Abp.Analyzer.csproj"
+		         Targets="Build"
+		         Properties="Configuration=$(Configuration)"
+		         RemoveProperties="TargetFramework;TargetFrameworks">
+			<Output TaskParameter="TargetOutputs" ItemName="_AnalyzerAssembly" />
+		</MSBuild>
+
+		<ItemGroup>
+			<TfmSpecificPackageFile Include="@(_AnalyzerAssembly)" PackagePath="analyzers/dotnet/cs" />
+		</ItemGroup>
+	</Target>
 
 </Project>
