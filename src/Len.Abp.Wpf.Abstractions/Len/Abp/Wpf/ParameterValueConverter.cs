@@ -5,11 +5,11 @@ namespace Len.Abp.Wpf;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 直接复用 <see cref="ParameterConversion.TryConvert(object?, Type, out object?)"/> 的转换逻辑，
+/// 直接复用 <see cref="ParameterConversion.CanConvert(object?, Type)"/> 的转换逻辑，
 /// 不另写一套判定：两处规则一旦分叉，就会出现"导航校验通过但读取失败"的矛盾。
 /// </para>
 /// <para>
-/// 目标类型在运行时才确定，但转换本身已经是非泛型的，因此这里不需要反射构造泛型委托，
+/// 目标类型在运行时才确定，但判定本身已经是非泛型的，因此这里不需要反射构造泛型委托，
 /// 也不需要在静态字典里缓存委托。判定结果只取决于值与类型，没有可缓存的状态。
 /// </para>
 /// </remarks>
@@ -26,6 +26,6 @@ public static class ParameterValueConverter
     {
         ArgumentNullException.ThrowIfNull(targetType);
 
-        return ParameterConversion.TryConvert(raw, targetType, out _);
+        return ParameterConversion.CanConvert(raw, targetType);
     }
 }

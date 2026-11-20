@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Globalization;
 using System.Numerics;
 
@@ -19,7 +20,7 @@ namespace Len.Abp.Wpf;
 /// 且每种类型都要额外缓存一份反射元数据。
 /// </para>
 /// <para>
-/// 代价是新增类型时必须在三处各补一条分支：<see cref="TryParseString"/>（非泛型校验路径）、
+/// 代价是新增类型时必须在三处各补一条分支：<see cref="CanParseString"/>（非泛型校验路径）、
 /// <see cref="StringParser{T}.CreateValue"/>（非可空泛型读取路径）与
 /// <see cref="StringParser{T}.CreateNullable"/>（可空泛型读取路径）。
 /// 三处都调用同一个 <c>TryParse</c>，语义一致；漏补只会让该类型退化为
@@ -73,18 +74,18 @@ internal static class ParameterConversion
     }
 
     /// <summary>
-    /// 把存储的原始值转换为运行时指定的目标类型。
+    /// 判断存储的原始值能否转换为运行时指定的目标类型。
     /// </summary>
     /// <param name="raw">原始值。</param>
     /// <param name="targetType">目标类型，可为可空值类型。</param>
-    /// <param name="value">转换结果；无法转换时为 <see langword="null"/>。</param>
     /// <returns>可转换时返回 <see langword="true"/>。</returns>
     /// <exception cref="ArgumentNullException"><paramref name="targetType"/> 为 <see langword="null"/> 时抛出。</exception>
     /// <remarks>
     /// 非泛型入口供 <see cref="ParameterValueConverter"/> 使用：目标类型在运行时才确定，
-    /// 无法走泛型路径。这里允许装箱——它只用于导航参数校验，不在读取热路径上。
+    /// 无法走泛型路径。调用方只关心"能不能转"，不关心转成什么，因此这里不产出值，
+    /// 校验路径上也就没有装箱。
     /// </remarks>
-    public static bool TryConvert(object? raw, Type targetType, out object? value)
+    public static bool CanConvert(object? raw, Type targetType)
     {
         ArgumentNullException.ThrowIfNull(targetType);
 
@@ -93,221 +94,138 @@ internal static class ParameterConversion
 
         if (raw is null)
         {
-            value = null;
-
             // null 只能赋给引用类型或可空值类型。
             return underlyingType is not null || !targetType.IsValueType;
         }
 
         if (type.IsInstanceOfType(raw))
         {
-            value = raw;
             return true;
         }
 
-        if (raw is string text && TryParseString(text, type, out value))
-        {
-            return true;
-        }
-
-        return TryConvertFallback(raw, type, out value);
+        return raw is string text ? CanParseString(text, type) : CanConvertFallback(raw, type);
     }
 
     /// <summary>
-    /// 把字符串解析为目标类型。
+    /// 判断字符串能否解析为目标类型。
     /// </summary>
     /// <param name="text">待解析的文本。</param>
     /// <param name="type">目标类型，已去掉可空包装。</param>
-    /// <param name="value">解析结果；失败时为 <see langword="null"/>。</param>
     /// <returns>解析成功时返回 <see langword="true"/>。</returns>
     /// <remarks>
-    /// 与 <see cref="StringParser{T}"/> 调用同一批 <c>TryParse</c> 方法，因此两条路径的
+    /// 与 <see cref="StringParser{T}"/> 调用同一批 <see cref="IParsable{TSelf}"/> 方法，因此两条路径的
     /// 判定结果一致。全部使用 <see cref="CultureInfo.InvariantCulture"/>：
     /// 查询串与导航参数是机器生成的文本，不能随宿主线程的区域设置变化。
     /// </remarks>
-    private static bool TryParseString(string text, Type type, out object? value)
+    private static bool CanParseString(string text, Type type)
     {
         // 枚举必须先判：它的 TypeCode 是底层整型，走数值分支会把 "999" 解析成 int 而不是枚举。
         if (type.IsEnum)
         {
-            if (Enum.TryParse(type, text, ignoreCase: true, out var enumValue))
-            {
-                value = enumValue;
-                return true;
-            }
-
-            value = null;
-            return false;
+            return Enum.TryParse(type, text, ignoreCase: true, out _);
         }
 
-        switch (Type.GetTypeCode(type))
-        {
-            case TypeCode.Boolean when bool.TryParse(text, out var boolean):
-                value = boolean;
-                return true;
-
-            case TypeCode.Char when char.TryParse(text, out var character):
-                value = character;
-                return true;
-
-            case TypeCode.SByte when sbyte.TryParse(text, CultureInfo.InvariantCulture, out var sbyteValue):
-                value = sbyteValue;
-                return true;
-
-            case TypeCode.Byte when byte.TryParse(text, CultureInfo.InvariantCulture, out var byteValue):
-                value = byteValue;
-                return true;
-
-            case TypeCode.Int16 when short.TryParse(text, CultureInfo.InvariantCulture, out var int16Value):
-                value = int16Value;
-                return true;
-
-            case TypeCode.UInt16 when ushort.TryParse(text, CultureInfo.InvariantCulture, out var uint16Value):
-                value = uint16Value;
-                return true;
-
-            case TypeCode.Int32 when int.TryParse(text, CultureInfo.InvariantCulture, out var int32Value):
-                value = int32Value;
-                return true;
-
-            case TypeCode.UInt32 when uint.TryParse(text, CultureInfo.InvariantCulture, out var uint32Value):
-                value = uint32Value;
-                return true;
-
-            case TypeCode.Int64 when long.TryParse(text, CultureInfo.InvariantCulture, out var int64Value):
-                value = int64Value;
-                return true;
-
-            case TypeCode.UInt64 when ulong.TryParse(text, CultureInfo.InvariantCulture, out var uint64Value):
-                value = uint64Value;
-                return true;
-
-            case TypeCode.Single when float.TryParse(text, CultureInfo.InvariantCulture, out var singleValue):
-                value = singleValue;
-                return true;
-
-            case TypeCode.Double when double.TryParse(text, CultureInfo.InvariantCulture, out var doubleValue):
-                value = doubleValue;
-                return true;
-
-            case TypeCode.Decimal when decimal.TryParse(text, CultureInfo.InvariantCulture, out var decimalValue):
-                value = decimalValue;
-                return true;
-
-            case TypeCode.DateTime when DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateTimeValue):
-                value = dateTimeValue;
-                return true;
-        }
-
-        // DateTimeOffset 必须单独列出：它的 TypeCode 是 Object，不会命中上面的 switch。
-        if (type == typeof(DateTimeOffset) && DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateTimeOffset))
-        {
-            value = dateTimeOffset;
-            return true;
-        }
-
-        // TypeCode 只覆盖内建基元类型，其余常用值类型逐个判定。
-        if (type == typeof(Guid) && Guid.TryParse(text, out var guid))
-        {
-            value = guid;
-            return true;
-        }
-
-        if (type == typeof(TimeSpan) && TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var timeSpan))
-        {
-            value = timeSpan;
-            return true;
-        }
-
-        if (type == typeof(DateOnly) && DateOnly.TryParse(text, CultureInfo.InvariantCulture, out var dateOnly))
-        {
-            value = dateOnly;
-            return true;
-        }
-
-        if (type == typeof(TimeOnly) && TimeOnly.TryParse(text, CultureInfo.InvariantCulture, out var timeOnly))
-        {
-            value = timeOnly;
-            return true;
-        }
-
-        if (type == typeof(Half) && Half.TryParse(text, CultureInfo.InvariantCulture, out var half))
-        {
-            value = half;
-            return true;
-        }
-
-        if (type == typeof(Int128) && Int128.TryParse(text, CultureInfo.InvariantCulture, out var int128))
-        {
-            value = int128;
-            return true;
-        }
-
-        if (type == typeof(UInt128) && UInt128.TryParse(text, CultureInfo.InvariantCulture, out var uint128))
-        {
-            value = uint128;
-            return true;
-        }
-
-        if (type == typeof(BigInteger) && BigInteger.TryParse(text, CultureInfo.InvariantCulture, out var bigInteger))
-        {
-            value = bigInteger;
-            return true;
-        }
-
-        if (type == typeof(IntPtr) && IntPtr.TryParse(text, CultureInfo.InvariantCulture, out var intPtr))
-        {
-            value = intPtr;
-            return true;
-        }
-
-        if (type == typeof(UIntPtr) && UIntPtr.TryParse(text, CultureInfo.InvariantCulture, out var uintPtr))
-        {
-            value = uintPtr;
-            return true;
-        }
-
-        value = null;
-        return false;
+        return StringParsers.TryGetValue(type, out var canParse) && canParse(text);
     }
 
     /// <summary>
-    /// 回退路径：处理跨数值类型、数值转枚举等非字符串场景。
+    /// 非泛型的字符串解析判定委托。
+    /// </summary>
+    /// <param name="text">待解析的文本。</param>
+    /// <returns>解析成功时返回 <see langword="true"/>。</returns>
+    private delegate bool CanParseDelegate(string text);
+
+    /// <summary>
+    /// 运行时类型到字符串解析判定的映射。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 用一张表代替"<see cref="TypeCode"/> switch + 逐个 <c>typeof</c> 判定"两套分派：
+    /// 新增类型只需加一行，不必再判断该类型有没有 <see cref="TypeCode"/>。
+    /// </para>
+    /// <para>
+    /// 用 <see cref="FrozenDictionary{TKey, TValue}"/> 而不是 <see cref="Dictionary{TKey, TValue}"/>：
+    /// 表在类型初始化时冻结，之后只读，查找走开放寻址，没有桶间接与版本检查。
+    /// 键是 <see cref="Type"/>，哈希即类型句柄，不涉及字符串比较。
+    /// </para>
+    /// </remarks>
+    private static readonly FrozenDictionary<Type, CanParseDelegate> StringParsers =
+        new Dictionary<Type, CanParseDelegate>
+        {
+            [typeof(bool)] = CanParse<bool>,
+            [typeof(char)] = CanParse<char>,
+            [typeof(sbyte)] = CanParse<sbyte>,
+            [typeof(byte)] = CanParse<byte>,
+            [typeof(short)] = CanParse<short>,
+            [typeof(ushort)] = CanParse<ushort>,
+            [typeof(int)] = CanParse<int>,
+            [typeof(uint)] = CanParse<uint>,
+            [typeof(long)] = CanParse<long>,
+            [typeof(ulong)] = CanParse<ulong>,
+            [typeof(float)] = CanParse<float>,
+            [typeof(double)] = CanParse<double>,
+            [typeof(decimal)] = CanParse<decimal>,
+            [typeof(DateTime)] = CanParse<DateTime>,
+            [typeof(DateTimeOffset)] = CanParse<DateTimeOffset>,
+            [typeof(Guid)] = CanParse<Guid>,
+            [typeof(TimeSpan)] = CanParse<TimeSpan>,
+            [typeof(DateOnly)] = CanParse<DateOnly>,
+            [typeof(TimeOnly)] = CanParse<TimeOnly>,
+            [typeof(Half)] = CanParse<Half>,
+            [typeof(Int128)] = CanParse<Int128>,
+            [typeof(UInt128)] = CanParse<UInt128>,
+            [typeof(BigInteger)] = CanParse<BigInteger>,
+            [typeof(IntPtr)] = CanParse<IntPtr>,
+            [typeof(UIntPtr)] = CanParse<UIntPtr>,
+        }.ToFrozenDictionary();
+
+    /// <summary>
+    /// 用 <see cref="IParsable{TSelf}"/> 判断能否解析。
+    /// </summary>
+    /// <typeparam name="T">目标值类型。</typeparam>
+    /// <param name="text">待解析的文本。</param>
+    /// <returns>解析成功时返回 <see langword="true"/>。</returns>
+    /// <remarks>
+    /// 必须调用接口方法而不是反射查找 <c>TryParse(string, IFormatProvider, out T)</c>：
+    /// <c>bool</c> 与 <c>char</c> 把该接口方法实现为显式接口实现，按名称反射找不到。
+    /// 泛型约束调用走接口分派，对显式实现同样有效。
+    /// </remarks>
+    private static bool CanParse<T>(string text)
+        where T : IParsable<T> => T.TryParse(text, CultureInfo.InvariantCulture, out _);
+
+    /// <summary>
+    /// 非泛型回退路径：处理跨数值类型、数值转枚举等非字符串场景。
     /// </summary>
     /// <param name="raw">原始值，非 <see langword="null"/>。</param>
     /// <param name="type">目标类型，已去掉可空包装。</param>
-    /// <param name="value">转换结果；失败时为 <see langword="null"/>。</param>
     /// <returns>可转换时返回 <see langword="true"/>。</returns>
-    private static bool TryConvertFallback(object raw, Type type, out object? value)
+    private static bool CanConvertFallback(object raw, Type type)
     {
         if (type.IsEnum && raw is IConvertible)
         {
             try
             {
-                value = Enum.ToObject(type, raw);
+                _ = Enum.ToObject(type, raw);
                 return true;
             }
             catch (ArgumentException)
             {
-                value = null;
                 return false;
             }
         }
 
         if (!typeof(IConvertible).IsAssignableFrom(type))
         {
-            value = null;
             return false;
         }
 
         try
         {
-            value = Convert.ChangeType(raw, type, CultureInfo.InvariantCulture);
+            _ = Convert.ChangeType(raw, type, CultureInfo.InvariantCulture);
             return true;
         }
         catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException)
         {
-            value = null;
             return false;
         }
     }
@@ -478,7 +396,7 @@ internal static class ParameterConversion
         /// <para>
         /// 名称到值的映射在首次使用时建表并缓存，之后按名称解析不产生任何分配。
         /// 数字字符串（如 <c>"999"</c>）与未定义值由 <see cref="Enum.TryParse(Type, string, bool, out object)"/>
-        /// 处理，与 <see cref="TryParseString"/> 的行为保持一致。
+        /// 处理，与 <see cref="CanParseString"/> 的行为保持一致。
         /// </para>
         /// <para>
         /// <b>这里只能用接受 <see cref="Type"/> 的非泛型重载。</b>

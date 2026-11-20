@@ -33,35 +33,32 @@ internal static class NavigationParameterValidator
             return;
         }
 
-        var failures = new List<string>();
+        var parameters = context.Parameters;
+        List<string>? failures = null;
 
         foreach (var (name, type) in required)
         {
             // IParameters 的键比较与这里一致，都是大小写不敏感，
             // 因此"校验通过"意味着视图模型随后一定能读到该参数。
             // 早期读取是 Ordinal，两处口径不一致会导致校验通过、读取失败。
-            var actualKey = context.Parameters.Keys.FirstOrDefault(key =>
-                string.Equals(key, name, StringComparison.OrdinalIgnoreCase)
-            );
-
-            if (actualKey is null)
+            if (!parameters.ContainsKey(name))
             {
-                failures.Add($"缺少参数 {name}");
+                (failures ??= []).Add($"缺少参数 {name}");
                 continue;
             }
 
-            if (type is not null && !ParameterValueConverter.CanConvert(type, context.Parameters[actualKey]))
+            if (type is not null && !ParameterValueConverter.CanConvert(type, parameters[name]))
             {
-                failures.Add($"参数 {name} 的类型不是 {type.Name}");
+                (failures ??= []).Add($"参数 {name} 的类型不是 {type.Name}");
             }
         }
 
-        if (failures.Count == 0)
+        if (failures is null)
         {
             return;
         }
 
-        var provided = string.Join(", ", context.Parameters.Keys);
+        var provided = string.Join(", ", parameters.Keys);
 
         throw new InvalidOperationException(
             $"视图 \"{view.ViewName}\" 的参数校验失败：{string.Join("；", failures)}。"
