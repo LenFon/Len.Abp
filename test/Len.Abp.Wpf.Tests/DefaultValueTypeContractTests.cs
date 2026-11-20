@@ -65,17 +65,26 @@ public class DefaultValueTypeContractTests
     /// 对照组：类型不匹配时 WPF 确实会拒绝。
     /// </summary>
     /// <remarks>
+    /// <para>
     /// 若这条也通过（即 WPF 不报错），说明上面的用例证明不了任何东西——
     /// 校验根本没发生。这条锁定"WPF 确实校验默认值类型"这个前提。
+    /// </para>
+    /// <para>
+    /// 断言属性名而不是异常文案：文案随操作系统语言变化
+    /// （中文「默认值类型与属性“X”类型不匹配。」、英文「Default value type does not match type of property 'X'.」），
+    /// 属性名两边都有。写死中文会让这条测试只在中文系统上通过。
+    /// </para>
     /// </remarks>
     [Theory]
     [InlineData(typeof(double), 1)]
     [InlineData(typeof(uint), 1)]
     public void MismatchedDefaultValue_IsRejectedByWpf(Type propertyType, object defaultValue)
     {
+        var propertyName = $"Mismatch{propertyType.Name}";
+
         var exception = Record.Exception(() =>
             DependencyProperty.Register(
-                $"Mismatch{propertyType.Name}",
+                propertyName,
                 propertyType,
                 typeof(ContractOwner),
                 new PropertyMetadata(defaultValue)
@@ -83,7 +92,7 @@ public class DefaultValueTypeContractTests
         );
 
         var argumentException = Assert.IsType<ArgumentException>(exception);
-        Assert.Contains("默认值类型", argumentException.Message);
+        Assert.Contains(propertyName, argumentException.Message);
     }
 
     /// <summary>
