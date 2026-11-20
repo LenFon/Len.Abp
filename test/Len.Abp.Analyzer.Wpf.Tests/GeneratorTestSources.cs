@@ -1,3 +1,6 @@
+using Len.Abp.Analyzer.TestSupport;
+using Xunit;
+
 namespace Len.Abp.Analyzer.Wpf.Tests;
 
 /// <summary>
@@ -46,6 +49,8 @@ internal static class GeneratorTestSources
             {
                 public static DependencyProperty Register(string name, System.Type propertyType, System.Type ownerType, PropertyMetadata typeMetadata, ValidateValueCallback validateValueCallback) => new();
                 public static DependencyPropertyKey RegisterReadOnly(string name, System.Type propertyType, System.Type ownerType, PropertyMetadata typeMetadata, ValidateValueCallback validateValueCallback) => new();
+                public static DependencyProperty RegisterAttached(string name, System.Type propertyType, System.Type ownerType, PropertyMetadata defaultMetadata, ValidateValueCallback? validateValueCallback) => new();
+                public static DependencyPropertyKey RegisterAttachedReadOnly(string name, System.Type propertyType, System.Type ownerType, PropertyMetadata defaultMetadata, ValidateValueCallback? validateValueCallback) => new();
             }
 
             public class DependencyPropertyKey { public DependencyProperty DependencyProperty => new(); }
@@ -152,9 +157,35 @@ internal static class GeneratorTestSources
             }
         }
 
+        namespace Len.Abp.Wpf.Navigation
+        {
+            // 与真实接口一致：实例成员 + 默认实现。
+            // 生成器把契约成员生成到视图模型上并实现该接口。
+            public interface INavigationContract
+            {
+                System.Collections.Generic.IReadOnlyDictionary<string, System.Type?> RequiredNavigationParameters =>
+                    EmptyParameters;
+
+                private static readonly System.Collections.Generic.IReadOnlyDictionary<string, System.Type?> EmptyParameters =
+                    new System.Collections.Generic.Dictionary<string, System.Type?>(System.StringComparer.OrdinalIgnoreCase);
+            }
+        }
+
         namespace Len.Abp.Wpf.Mvvm
         {
-            public interface IView { object ViewModel { get; } string ViewName { get; } }
+            public interface IView
+            {
+                object ViewModel { get; }
+                string ViewName { get; }
+
+                // 与真实接口一致：实例成员 + 默认实现。
+                // 生成器只产出静态属性时类不会实现该成员，可复现"校验读到空字典"的缺陷。
+                System.Collections.Generic.IReadOnlyDictionary<string, System.Type?> RequiredNavigationParameters =>
+                    EmptyParameters;
+
+                private static readonly System.Collections.Generic.IReadOnlyDictionary<string, System.Type?> EmptyParameters =
+                    new System.Collections.Generic.Dictionary<string, System.Type?>(System.StringComparer.OrdinalIgnoreCase);
+            }
             public interface IView<out TViewModel> : IView where TViewModel : class { new TViewModel ViewModel { get; } }
 
             [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
@@ -164,9 +195,11 @@ internal static class GeneratorTestSources
                 public bool IsShell { get; set; }
                 public System.Type ViewModel { get; set; } = null!;
                 public string? ViewName { get; set; }
+                public string[]? RequiredParameters { get; set; }
+                public Microsoft.Extensions.DependencyInjection.ServiceLifetime ViewModelLifetime { get; set; }
+                public bool HasViewModelLifetime { get; set; }
                 public Microsoft.Extensions.DependencyInjection.ServiceLifetime Lifetime { get; set; }
             }
-
             [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
             public class ViewAttribute<T> : ViewAttribute { public ViewAttribute() : base(typeof(T)) { } }
         }
@@ -197,4 +230,43 @@ internal static class GeneratorTestSources
     /// <param name="snippet">待测类型声明。</param>
     /// <returns>可直接交给生成器的源码。</returns>
     public static string With(string snippet) => Stubs + "\n\n" + snippet.TrimEnd() + "\n";
+
+    /// <summary>
+    /// 从生成结果中取视图源文件。
+    /// </summary>
+    /// <param name="sources">生成器产出的源文件。</param>
+    /// <returns>视图源文件。</returns>
+    /// <remarks>
+    /// <c>MvvmGenerator</c> 把视图与视图模型分成两个文件产出，断言视图成员时必须
+    /// 精确取视图那份，不能再用 <c>Assert.Single</c>——那样会在拆分后失败，
+    /// 也掩盖了"文件确实分开了"这一事实。
+    /// </remarks>
+    public static GeneratedSource ViewSource(this IReadOnlyList<GeneratedSource> sources) =>
+        Assert.Single(sources, source => !IsViewModelSource(source));
+
+    /// <summary>
+    /// 从生成结果中取视图模型源文件。
+    /// </summary>
+    /// <param name="sources">生成器产出的源文件。</param>
+    /// <returns>视图模型源文件。</returns>
+    public static GeneratedSource ViewModelSource(this IReadOnlyList<GeneratedSource> sources) =>
+        Assert.Single(sources, IsViewModelSource);
+
+    /// <summary>
+    /// 从生成结果中取视图模型源文件；不存在时返回 <see langword="null"/>。
+    /// </summary>
+    /// <param name="sources">生成器产出的源文件。</param>
+    /// <returns>视图模型源文件，或 <see langword="null"/>。</returns>
+    /// <remarks>
+    /// 用于断言"不该生成视图模型声明"的场景：视图模型不是 <c>partial</c>、
+    /// 是抽象类或已手工声明生命周期接口时，生成器不产出视图模型文件。
+    /// </remarks>
+    public static GeneratedSource? FindViewModelSource(this IReadOnlyList<GeneratedSource> sources) =>
+        sources.SingleOrDefault(IsViewModelSource);
+
+    /// <summary>
+    /// 判断源文件是否为视图模型文件。
+    /// </summary>
+    private static bool IsViewModelSource(GeneratedSource source) =>
+        source.HintName.EndsWith(".ViewModel.g.cs", StringComparison.Ordinal);
 }

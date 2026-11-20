@@ -75,6 +75,48 @@ public class ViewAttributeTests
     }
 
     /// <summary>
+    /// 未显式指定视图模型生命周期时，标记位为 false，视图模型跟随视图的生命周期。
+    /// </summary>
+    [Fact]
+    public void ViewModelLifetime_DefaultsToTransientWithoutExplicitFlag()
+    {
+        var attribute = new ViewAttribute(typeof(SampleViewModel));
+
+        Assert.Equal(ServiceLifetime.Transient, attribute.ViewModelLifetime);
+        Assert.False(attribute.HasViewModelLifetime);
+    }
+
+    /// <summary>
+    /// 显式指定视图模型生命周期时，标记位与取值一起生效。
+    /// </summary>
+    [Fact]
+    public void ViewModelLifetime_ExplicitValue_SetsFlag()
+    {
+        var attribute = new ViewAttribute(typeof(SampleViewModel))
+        {
+            ViewModelLifetime = ServiceLifetime.Singleton,
+            HasViewModelLifetime = true,
+        };
+
+        Assert.Equal(ServiceLifetime.Singleton, attribute.ViewModelLifetime);
+        Assert.True(attribute.HasViewModelLifetime);
+    }
+
+    /// <summary>
+    /// 必需参数声明可读写。
+    /// </summary>
+    [Fact]
+    public void RequiredParameters_IsSettable()
+    {
+        var attribute = new ViewAttribute(typeof(SampleViewModel))
+        {
+            RequiredParameters = ["Id:int", "Source"],
+        };
+
+        Assert.Equal(["Id:int", "Source"], attribute.RequiredParameters);
+    }
+
+    /// <summary>
     /// 测试用视图模型。
     /// </summary>
     public sealed class SampleViewModel;

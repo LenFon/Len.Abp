@@ -43,6 +43,8 @@ public class DependencyPropertyGeneratorTests
             {
                 public static DependencyProperty Register(string name, System.Type propertyType, System.Type ownerType, PropertyMetadata typeMetadata, ValidateValueCallback validateValueCallback) => new();
                 public static DependencyPropertyKey RegisterReadOnly(string name, System.Type propertyType, System.Type ownerType, PropertyMetadata typeMetadata, ValidateValueCallback validateValueCallback) => new();
+                public static DependencyProperty RegisterAttached(string name, System.Type propertyType, System.Type ownerType, PropertyMetadata defaultMetadata, ValidateValueCallback? validateValueCallback) => new();
+                public static DependencyPropertyKey RegisterAttachedReadOnly(string name, System.Type propertyType, System.Type ownerType, PropertyMetadata defaultMetadata, ValidateValueCallback? validateValueCallback) => new();
             }
 
             public class DependencyPropertyKey { public DependencyProperty DependencyProperty => new(); }
@@ -250,5 +252,99 @@ public class DependencyPropertyGeneratorTests
         Assert.Contains("public static string GetTitle(global::System.Windows.DependencyObject element)", generated.Text);
         Assert.Contains("public static void SetTitle(global::System.Windows.DependencyObject element, string value)", generated.Text);
         Assert.Contains("static partial void OnTitleChanged(global::System.Windows.DependencyObject element, string oldValue, string newValue);", generated.Text);
+    }
+
+    /// <summary>
+    /// 附加属性的钩子是静态方法：强制值回调要传 <c>sender</c>，变更回调不需要收窄 <c>sender</c>。
+    /// </summary>
+    [Fact]
+    public void AttachedProperty_HooksReceiveSenderWithoutGuard()
+    {
+        var sources = GeneratorTestHost.Run(
+            new AttachedDependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.AttachedDependencyProperty<string>("Title")]
+                    public static partial class MyAttached
+                    {
+                        static partial void CoerceTitle(global::System.Windows.DependencyObject element, string value, ref string result) { }
+                        static partial void OnTitleChanged(global::System.Windows.DependencyObject element, string oldValue, string newValue) { }
+                    }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        Assert.Contains("CoerceTitle(s, (string)value, ref result);", generated.Text);
+        Assert.Contains("OnTitleChanged(s, (string)e.OldValue, (string)e.NewValue);", generated.Text);
+        Assert.DoesNotContain("is not", generated.Text);
+    }
+
+    /// <summary>
+    /// 嵌套在泛型外层类型中的控件，外层声明使用未闭合的类型参数。
+    /// </summary>
+    /// <remarks>
+    /// 回归：外层声明原先用显示名，闭合泛型被写成 <c>partial class Host&lt;int&gt;</c>，
+    /// 编译报 CS1001/CS0264。partial 声明只能用未闭合的类型参数。
+    /// </remarks>
+    [Fact]
+    public void NestedInGenericOuter_UsesUnclosedTypeParameters()
+    {
+        var sources = GeneratorTestHost.Run(
+            new DependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    public partial class Host<T>
+                    {
+                        [Len.Abp.Wpf.DependencyProperty<string>("Title")]
+                        public partial class MyControl : System.Windows.DependencyObject { }
+                    }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        Assert.Contains("partial class Host<T>", generated.Text);
+        Assert.DoesNotContain("partial class Host<int>", generated.Text);
+    }
+
+    /// <summary>
+    /// 嵌套在 <c>record struct</c> 外层类型中的控件，外层声明保留 <c>record struct</c>。
+    /// </summary>
+    /// <remarks>
+    /// 回归：关键字选择原先只判 <c>IsRecord</c>，<c>record struct</c>
+    /// 被误判成 <c>record</c>，编译报 CS0261。
+    /// </remarks>
+    [Fact]
+    public void NestedInRecordStructOuter_UsesRecordStructKeyword()
+    {
+        var sources = GeneratorTestHost.Run(
+            new DependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    public partial record struct Host
+                    {
+                        [Len.Abp.Wpf.DependencyProperty<string>("Title")]
+                        public partial class MyControl : System.Windows.DependencyObject { }
+                    }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        Assert.Contains("partial record struct Host", generated.Text);
+        Assert.DoesNotContain("partial record Host", generated.Text);
     }
 }

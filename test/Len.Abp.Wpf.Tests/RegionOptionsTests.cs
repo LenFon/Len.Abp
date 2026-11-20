@@ -58,4 +58,53 @@ public class RegionOptionsTests
     {
         Assert.Empty(new RegionOptions().BehaviorKeys);
     }
+
+    /// <summary>
+    /// 只有空白字符的键是合法键，不做裁剪或拒绝。
+    /// </summary>
+    /// <remarks>
+    /// 键来自 <c>[ExposeKeyedService]</c> 的名称，空白键属于配置错误但不应在
+    /// 启动期抛异常；这里锁定"按原样保存"的行为。
+    /// </remarks>
+    [Fact]
+    public void AddBehaviorKey_WhitespaceKey_IsAcceptedAsIs()
+    {
+        var options = new RegionOptions();
+
+        options.AddBehaviorKey(" ");
+
+        Assert.Equal([" "], options.BehaviorKeys);
+    }
+
+    /// <summary>
+    /// 键名区分大小写，大小写不同视为不同键。
+    /// </summary>
+    [Fact]
+    public void AddBehaviorKey_IsCaseSensitive()
+    {
+        var options = new RegionOptions();
+
+        options.AddBehaviorKey("Behavior");
+        options.AddBehaviorKey("behavior");
+
+        Assert.Equal(2, options.BehaviorKeys.Count());
+    }
+
+    /// <summary>
+    /// 大量行为键全部保留且顺序不变。
+    /// </summary>
+    [Fact]
+    public void AddBehaviorKey_ManyKeys_PreservesOrder()
+    {
+        var options = new RegionOptions();
+
+        for (var i = 0; i < 500; i++)
+        {
+            options.AddBehaviorKey($"key{i}");
+        }
+
+        Assert.Equal(500, options.BehaviorKeys.Count());
+        Assert.Equal("key0", options.BehaviorKeys.First());
+        Assert.Equal("key499", options.BehaviorKeys.Last());
+    }
 }

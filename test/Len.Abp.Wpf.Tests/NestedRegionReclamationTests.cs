@@ -1,9 +1,9 @@
 using Len.Abp.Wpf.Mvvm;
 using Len.Abp.Wpf.Navigation;
 using Len.Abp.Wpf.Navigation.Regions;
-using RegionImpl = Len.Abp.Wpf.Navigation.Regions.Region;
 using Len.Abp.Wpf.Navigation.Regions.Behaviors;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using System.Runtime.CompilerServices;
 using Volo.Abp.DependencyInjection;
 using Xunit;
@@ -65,12 +65,12 @@ public class NestedRegionReclamationTests
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static List<(DisposableView View, SingleActiveRegion Region)> BuildChain(
         RegionProvider provider,
-        RegionImpl rootRegion,
+        Region rootRegion,
         int depthCount
     )
     {
         var levels = new List<(DisposableView View, SingleActiveRegion Region)>();
-        RegionImpl parent = rootRegion;
+        Region parent = rootRegion;
 
         for (var depth = 1; depth <= depthCount; depth++)
         {
@@ -129,7 +129,7 @@ public class NestedRegionReclamationTests
     private static async Task<(WeakReference[] Views, WeakReference[] ViewModels)> RunOneRoundAsync(
         NavigationService service,
         RegionProvider provider,
-        RegionImpl rootRegion
+        Region rootRegion
     )
     {
         var levels = BuildChain(provider, rootRegion, 8);
@@ -184,7 +184,7 @@ public class NestedRegionReclamationTests
     /// </remarks>
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static async Task<(WeakReference[] DeeperViews, WeakReference[] DeeperViewModels, WeakReference[] ShallowerViews)>
-        RunLevel4SwitchScenarioAsync(NavigationService service, RegionProvider provider, RegionImpl rootRegion)
+        RunLevel4SwitchScenarioAsync(NavigationService service, RegionProvider provider, Region rootRegion)
     {
         var levels = BuildChain(provider, rootRegion, 8);
 
@@ -234,7 +234,7 @@ public class NestedRegionReclamationTests
 
         var rootView = new DisposableView("level1", new DisposableViewModel { KeepAlive = true });
         var childView = new DisposableView("level2", new DisposableViewModel());
-        var childRegion = new RegionImpl("Level1Region", rootView.ViewName, rootView);
+        var childRegion = new Region("Level1Region", rootView.ViewName, rootView);
         childRegion.Add(childView);
         rootRegion.Add(rootView);
         provider.Add(childRegion);
@@ -256,11 +256,11 @@ public class NestedRegionReclamationTests
         GC.Collect();
     }
 
-    private static void AttachLifetimeBehavior(RegionImpl region, RegionProvider provider)
+    private static void AttachLifetimeBehavior(Region region, RegionProvider provider)
     {
         if (!region.Behaviors.ContainsKey(nameof(RegionMemberLifetimeBehavior)))
         {
-            region.Behaviors.Add(nameof(RegionMemberLifetimeBehavior), new RegionMemberLifetimeBehavior(provider));
+            region.Behaviors.Add(nameof(RegionMemberLifetimeBehavior), new RegionMemberLifetimeBehavior(provider, new ViewScopeRegistry()));
         }
     }
 
@@ -275,7 +275,7 @@ public class NestedRegionReclamationTests
         services.AddKeyedSingleton<IView>("other", new FakeView("other"));
         var serviceProvider = services.BuildServiceProvider();
 
-        return (new NavigationService(new RegionFinder(provider), serviceProvider), provider, rootRegion);
+        return (new NavigationService(new RegionFinder(provider), provider, serviceProvider, new FakeUiDispatcher(), new NavigationViewResolver(serviceProvider, new ViewScopeRegistry()), Options.Create(new NavigationOptions())), provider, rootRegion);
     }
 
     private sealed class DisposableViewModel : IRegionMemberLifetime, IDisposable

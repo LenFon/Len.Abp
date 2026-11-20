@@ -2,10 +2,9 @@ using Len.Abp.Wpf.Mvvm;
 using Len.Abp.Wpf.Navigation;
 using Len.Abp.Wpf.Navigation.Regions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Xunit;
 
-// 附加属性 Len.Abp.Wpf.Navigation.Region 与区域实现 Len.Abp.Wpf.Navigation.Regions.Region 同名。
-using RegionImpl = Len.Abp.Wpf.Navigation.Regions.Region;
 
 namespace Len.Abp.Wpf.Tests;
 
@@ -71,6 +70,53 @@ public class NavigationServiceTests
         await Assert.ThrowsAsync<ArgumentException>(
             async () => await service.NavigateAsync("MainRegion", string.Empty, IParameters.Create())
         );
+    }
+
+    /// <summary>
+    /// 视图名称为 null 时抛出异常。
+    /// </summary>
+    [Fact]
+    public async Task NavigateAsync_NullViewName_Throws()
+    {
+        var (service, _) = CreateService(new FakeView("demo"));
+
+        await Assert.ThrowsAnyAsync<ArgumentException>(
+            async () => await service.NavigateAsync("MainRegion", (string)null!, IParameters.Create())
+        );
+    }
+
+    /// <summary>
+    /// 只有空白的视图名不是空字符串，会走正常解析路径并因未注册而失败。
+    /// </summary>
+    /// <remarks>
+    /// 入口只拒绝空字符串，不裁剪空白；这里锁定"空白名不会被当成有效视图"的结果，
+    /// 而不是断言它被提前拒绝。
+    /// </remarks>
+    [Theory]
+    [InlineData(" ")]
+    [InlineData("\t")]
+    public async Task NavigateAsync_WhitespaceViewName_FailsWithoutResolving(string viewName)
+    {
+        var (service, _) = CreateService(new FakeView("demo"));
+
+        var result = await service.NavigateAsync("MainRegion", viewName, IParameters.Create());
+
+        Assert.False(result.Result);
+        Assert.NotNull(result.Exception);
+    }
+
+    /// <summary>
+    /// 区域名称为空时返回失败结果而不是抛异常，与"区域不存在"保持一致。
+    /// </summary>
+    [Fact]
+    public async Task NavigateAsync_EmptyRegionName_ReturnsFailedResult()
+    {
+        var (service, _) = CreateService(new FakeView("demo"));
+
+        var result = await service.NavigateAsync(string.Empty, "demo", IParameters.Create());
+
+        Assert.False(result.Result);
+        Assert.Null(result.Exception);
     }
 
     /// <summary>
@@ -287,7 +333,7 @@ public class NavigationServiceTests
         Assert.True(region.ActiveViews.Contains(view));
     }
 
-    private static (NavigationService Service, RegionImpl Region) CreateService(params FakeView[] views)
+    private static (NavigationService Service, Region Region) CreateService(params FakeView[] views)
     {
         // 与 ContentControlRegionAdapter 保持一致：内容控件区域同一时刻只有一个活动视图。
         var region = new SingleActiveRegion("MainRegion", "MainView");
@@ -301,7 +347,7 @@ public class NavigationServiceTests
         }
 
         var serviceProvider = services.BuildServiceProvider();
-        var service = new NavigationService(new RegionFinder(provider), serviceProvider);
+        var service = new NavigationService(new RegionFinder(provider), provider, serviceProvider, new FakeUiDispatcher(), new NavigationViewResolver(serviceProvider, new ViewScopeRegistry()), Options.Create(new NavigationOptions()));
 
         return (service, region);
     }

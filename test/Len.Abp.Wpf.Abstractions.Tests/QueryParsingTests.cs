@@ -81,16 +81,22 @@ public class QueryParsingTests
     }
 
     /// <summary>
-    /// 加号被解码为空格，百分号编码被解码。
+    /// 百分号编码被解码，加号保持字面值。
     /// </summary>
+    /// <remarks>
+    /// 回归：原实现照搬 HTML 表单规则，把 <c>+</c> 解码成空格，
+    /// 会静默改坏 base64 令牌这类值。导航 URI 是普通 URI，
+    /// 空格应写 <c>%20</c>。
+    /// </remarks>
     [Fact]
-    public void ParseNullableQuery_DecodesPlusAndPercentEncoding()
+    public void ParseNullableQuery_DecodesPercentEncodingButKeepsPlus()
     {
-        var result = QueryHelpers.ParseNullableQuery("?name=hello+world&path=a%2Fb");
+        var result = QueryHelpers.ParseNullableQuery("?name=hello+world&path=a%2Fb&space=a%20b");
 
         Assert.NotNull(result);
-        Assert.Equal("hello world", result["name"].ToString());
+        Assert.Equal("hello+world", result["name"].ToString());
         Assert.Equal("a/b", result["path"].ToString());
+        Assert.Equal("a b", result["space"].ToString());
     }
 
     /// <summary>

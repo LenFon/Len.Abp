@@ -339,17 +339,17 @@ public class RegionTests
     }
 
     /// <summary>
-    /// 视图集合按视图名称排序。
+    /// 视图集合按插入顺序排列。
     /// </summary>
     [Fact]
-    public void Views_AreOrderedByViewName()
+    public void Views_PreserveInsertionOrder()
     {
         var region = new Region("MainRegion", "MainView");
         region.Add(new FakeView("charlie"));
         region.Add(new FakeView("alpha"));
         region.Add(new FakeView("bravo"));
 
-        Assert.Equal(["alpha", "bravo", "charlie"], region.Views.Select(v => v.ViewName));
+        Assert.Equal(["charlie", "alpha", "bravo"], region.Views.Select(v => v.ViewName));
     }
 
     /// <summary>
@@ -368,5 +368,99 @@ public class RegionTests
         region.Remove(view);
 
         Assert.Equal([NotifyCollectionChangedAction.Remove], actions);
+    }
+
+    /// <summary>
+    /// 区域名称与所有者允许为空字符串，不做额外校验。
+    /// </summary>
+    /// <remarks>
+    /// 区域名由 XAML 附加属性提供，空名在导航时表现为"找不到区域"，
+    /// 而不是构造期异常——构造期抛异常会让整个视图加载失败。
+    /// </remarks>
+    [Fact]
+    public void Constructor_EmptyNameAndOwner_AreAccepted()
+    {
+        var region = new Region(string.Empty, string.Empty);
+
+        Assert.Equal(string.Empty, region.Name);
+        Assert.Equal(string.Empty, region.Owner);
+    }
+
+    /// <summary>
+    /// 视图名称为空字符串时仍可加入区域并按名称查到。
+    /// </summary>
+    [Fact]
+    public void Add_ViewWithEmptyName_IsQueryable()
+    {
+        var region = new Region("MainRegion", "MainView");
+        var view = new FakeView(string.Empty);
+
+        region.Add(view);
+
+        Assert.Same(view, region.GetView(string.Empty));
+    }
+
+    /// <summary>
+    /// 同名视图可以共存，GetView 返回第一个。
+    /// </summary>
+    [Fact]
+    public void Add_DuplicateViewNames_AreAllowedAndFirstWins()
+    {
+        var region = new Region("MainRegion", "MainView");
+        var first = new FakeView("demo");
+        var second = new FakeView("demo");
+
+        region.Add(first);
+        region.Add(second);
+
+        Assert.Equal(2, region.Views.Count);
+        Assert.Same(first, region.GetView("demo"));
+    }
+
+    /// <summary>
+    /// 大量视图的增删保持顺序与计数正确。
+    /// </summary>
+    [Fact]
+    public void AddAndRemove_ManyViews_KeepsOrderAndCount()
+    {
+        var region = new Region("MainRegion", "MainView");
+        var views = Enumerable.Range(0, 1_000).Select(i => new FakeView($"v{i}")).ToArray();
+
+        foreach (var view in views)
+        {
+            region.Add(view);
+        }
+
+        Assert.Equal(1_000, region.Views.Count);
+
+        region.Remove(views[0]);
+        region.Remove(views[^1]);
+
+        Assert.Equal(998, region.Views.Count);
+        Assert.Equal("v1", region.Views.First().ViewName);
+        Assert.Equal("v998", region.Views.Last().ViewName);
+    }
+
+    /// <summary>
+    /// 清空大量视图后活动视图集合同步清空。
+    /// </summary>
+    [Fact]
+    public void RemoveAll_ManyActiveViews_ClearsActiveCollection()
+    {
+        var region = new Region("MainRegion", "MainView");
+        var views = Enumerable.Range(0, 200).Select(i => new FakeView($"v{i}")).ToArray();
+
+        foreach (var view in views)
+        {
+            region.Add(view);
+            region.Activate(view);
+        }
+
+        Assert.Equal(200, region.ActiveViews.Count);
+
+        region.RemoveAll();
+
+        Assert.Empty(region.Views);
+        Assert.Empty(region.ActiveViews);
     }
 }

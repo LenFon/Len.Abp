@@ -16,7 +16,7 @@ internal sealed class FakeAbpApplication : IAbpApplication
     public IServiceCollection Services { get; } = new ServiceCollection();
 
     /// <inheritdoc/>
-    public IServiceProvider ServiceProvider { get; } = new ServiceCollection().BuildServiceProvider();
+    public IServiceProvider ServiceProvider { get; set; } = new ServiceCollection().BuildServiceProvider();
 
     /// <inheritdoc/>
     public IReadOnlyList<IAbpModuleDescriptor> Modules { get; set; } = [];

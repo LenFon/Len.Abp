@@ -10,7 +10,7 @@ namespace Len.Abp.Wpf.Tests;
 public class WpfOptionsTests
 {
     /// <summary>
-    /// 默认链接宿主生命周期、按最后一个窗口关闭退出、不启用单实例。
+    /// 默认链接宿主生命周期、按最后一个窗口关闭退出、不启用单实例、不吞掉未处理异常。
     /// </summary>
     [Fact]
     public void Defaults_AreExpected()
@@ -20,6 +20,7 @@ public class WpfOptionsTests
         Assert.True(options.IsLifetimeLinked);
         Assert.Equal(ShutdownMode.OnLastWindowClose, options.ShutdownMode);
         Assert.False(options.SingleInstance);
+        Assert.False(options.HandleUnhandledExceptions);
     }
 
     /// <summary>
@@ -33,5 +34,6 @@ public class WpfOptionsTests
         Assert.True(context.IsLifetimeLinked);
         Assert.False(context.IsRunning);
         Assert.Equal(ShutdownMode.OnLastWindowClose, context.ShutdownMode);
+        Assert.False(context.HandleUnhandledExceptions);
     }
 }

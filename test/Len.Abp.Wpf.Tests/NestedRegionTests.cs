@@ -3,11 +3,10 @@ using Len.Abp.Wpf.Navigation;
 using Len.Abp.Wpf.Navigation.Regions;
 using Len.Abp.Wpf.Navigation.Regions.Behaviors;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Volo.Abp.DependencyInjection;
 using Xunit;
 
-// 附加属性 Len.Abp.Wpf.Navigation.Region 与区域实现 Len.Abp.Wpf.Navigation.Regions.Region 同名。
-using RegionImpl = Len.Abp.Wpf.Navigation.Regions.Region;
 
 namespace Len.Abp.Wpf.Tests;
 
@@ -127,7 +126,7 @@ public class NestedRegionTests
     {
         if (!region.Behaviors.ContainsKey(nameof(RegionMemberLifetimeBehavior)))
         {
-            region.Behaviors.Add(nameof(RegionMemberLifetimeBehavior), new RegionMemberLifetimeBehavior(provider));
+            region.Behaviors.Add(nameof(RegionMemberLifetimeBehavior), new RegionMemberLifetimeBehavior(provider, new ViewScopeRegistry()));
         }
     }
 
@@ -147,7 +146,7 @@ public class NestedRegionTests
 
         var serviceProvider = services.BuildServiceProvider();
 
-        return new NavigationService(new RegionFinder(provider), serviceProvider);
+        return new NavigationService(new RegionFinder(provider), provider, serviceProvider, new FakeUiDispatcher(), new NavigationViewResolver(serviceProvider, new ViewScopeRegistry()), Options.Create(new NavigationOptions()));
     }
 
     private sealed class LifetimeViewModel(bool keepAlive) : IRegionMemberLifetime

@@ -47,39 +47,6 @@ public class TypedConstantExtensionsTests
         Assert.Equal(Guid.Parse(ConstantHolder.GuidValue), constant.To<Guid>());
     }
 
-    /// <summary>
-    /// 可空转换在值为 null 时返回 null。
-    /// </summary>
-    [Fact]
-    public void ToNullable_NullValue_ReturnsNull()
-    {
-        var constant = GetNamedArgument("NullValue");
-
-        Assert.Null(constant.ToNullable<int>());
-    }
-
-    /// <summary>
-    /// 可空转换在值存在时返回转换结果。
-    /// </summary>
-    [Fact]
-    public void ToNullable_Value_Converts()
-    {
-        var constant = GetNamedArgument("Number");
-
-        Assert.Equal(7, constant.ToNullable<int>());
-    }
-
-    /// <summary>
-    /// 可空转换支持 Guid。
-    /// </summary>
-    [Fact]
-    public void ToNullable_GuidString_Converts()
-    {
-        var constant = GetNamedArgument("GuidText");
-
-        Assert.Equal(Guid.Parse(ConstantHolder.GuidValue), constant.ToNullable<Guid>());
-    }
-
     private static TypedConstant GetNamedArgument(string name)
     {
         var source = $$"""

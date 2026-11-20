@@ -15,44 +15,58 @@ namespace Len.Abp.Analyzer.Tests;
 public class SourceProductionContextExtensionsTests
 {
     /// <summary>
-    /// 报告的诊断包含指定的 ID、错误级别与异常文本。
+    /// 报告的诊断固定使用 <c>LENABP005</c>，并包含异常类型与消息。
     /// </summary>
     [Fact]
-    public void ReportException_CreatesDiagnosticWithId()
+    public void ReportException_UsesGeneratorFailureDescriptor()
     {
-        var diagnostics = RunReportingGenerator(ctx => ctx.ReportException("TEST001", new InvalidOperationException("boom")));
+        var diagnostics = RunReportingGenerator(ctx => ctx.ReportException(new InvalidOperationException("boom")));
 
         var diagnostic = Assert.Single(diagnostics);
-        Assert.Equal("TEST001", diagnostic.Id);
+        Assert.Equal("LENABP005", diagnostic.Id);
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Contains("InvalidOperationException", diagnostic.GetMessage());
         Assert.Contains("boom", diagnostic.GetMessage());
     }
 
     /// <summary>
-    /// 指定前缀时诊断 ID 带上前缀。
+    /// 未传位置时退化为 <see cref="Location.None"/>。
     /// </summary>
     [Fact]
-    public void ReportException_WithPrefix_PrependsToId()
+    public void ReportException_WithoutLocation_UsesLocationNone()
     {
-        var diagnostics = RunReportingGenerator(
-            ctx => ctx.ReportException("001", new Exception("boom"), "PREFIX")
-        );
+        var diagnostics = RunReportingGenerator(ctx => ctx.ReportException(new Exception("boom")));
 
-        Assert.Equal("PREFIX001", Assert.Single(diagnostics).Id);
+        Assert.Equal(Location.None, Assert.Single(diagnostics).Location);
     }
 
     /// <summary>
-    /// ID 为 null 时抛出异常。
+    /// 传入位置时诊断带该位置，可跳转到源码。
     /// </summary>
+    /// <remarks>
+    /// 位置必须来自编译中的语法树，否则 Roslyn 会把诊断位置降级为 <see cref="Location.None"/>。
+    /// </remarks>
     [Fact]
-    public void ReportException_NullId_Throws()
+    public void ReportException_WithLocation_UsesProvidedLocation()
     {
-        // 参数校验发生在 ReportDiagnostic 之前，因此用 default 上下文即可触发。
-        var exception = Assert.Throws<ArgumentNullException>(
-            () => default(SourceProductionContext).ReportException(null!, new Exception())
+        var diagnostics = RunReportingGenerator(
+            (ctx, compilation) =>
+            {
+                var location = compilation.SyntaxTrees
+                    .Single()
+                    .GetRoot()
+                    .DescendantNodes()
+                    .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax>()
+                    .Single()
+                    .Identifier.GetLocation();
+
+                ctx.ReportException(new Exception("boom"), location);
+            }
         );
 
-        Assert.Equal("id", exception.ParamName);
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.NotEqual(Location.None, diagnostic.Location);
+        Assert.True(diagnostic.Location.IsInSource);
     }
 
     /// <summary>
@@ -62,7 +76,7 @@ public class SourceProductionContextExtensionsTests
     public void ReportException_NullException_Throws()
     {
         var exception = Assert.Throws<ArgumentNullException>(
-            () => default(SourceProductionContext).ReportException("TEST001", null!)
+            () => default(SourceProductionContext).ReportException(null!)
         );
 
         Assert.Equal("exception", exception.ParamName);
@@ -70,18 +84,26 @@ public class SourceProductionContextExtensionsTests
 
     private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunReportingGenerator(
         Action<SourceProductionContext> report
+    ) => RunReportingGenerator((ctx, _) => report(ctx));
+
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunReportingGenerator(
+        Action<SourceProductionContext, Compilation> report
     )
     {
-        var compilation = CSharpCompilation.Create("ContextTests");
+        var compilation = CSharpCompilation.Create(
+            "ContextTests",
+            syntaxTrees: [CSharpSyntaxTree.ParseText("class C { }")]
+        );
+
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new ReportingGenerator(report).AsSourceGenerator());
         driver = driver.RunGenerators(compilation);
 
         return driver.GetRunResult().Diagnostics;
     }
 
-    private sealed class ReportingGenerator(Action<SourceProductionContext> report) : IIncrementalGenerator
+    private sealed class ReportingGenerator(Action<SourceProductionContext, Compilation> report) : IIncrementalGenerator
     {
         public void Initialize(IncrementalGeneratorInitializationContext context) =>
-            context.RegisterSourceOutput(context.CompilationProvider, (ctx, _) => report(ctx));
+            context.RegisterSourceOutput(context.CompilationProvider, (ctx, compilation) => report(ctx, compilation));
     }
 }

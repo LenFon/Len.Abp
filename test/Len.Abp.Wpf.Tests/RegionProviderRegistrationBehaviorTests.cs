@@ -2,8 +2,6 @@ using Len.Abp.Wpf.Navigation.Regions;
 using Len.Abp.Wpf.Navigation.Regions.Behaviors;
 using Xunit;
 
-// 附加属性 Len.Abp.Wpf.Navigation.Region 与区域实现 Len.Abp.Wpf.Navigation.Regions.Region 同名。
-using RegionImpl = Len.Abp.Wpf.Navigation.Regions.Region;
 
 namespace Len.Abp.Wpf.Tests;
 
@@ -19,7 +17,7 @@ public class RegionProviderRegistrationBehaviorTests
     public void Attach_RegistersRegion()
     {
         var provider = new RegionProvider();
-        var region = new RegionImpl("MainRegion", "MainView");
+        var region = new Region("MainRegion", "MainView");
         var behavior = new RegionProviderRegistrationBehavior(provider) { Region = region };
 
         behavior.Attach();

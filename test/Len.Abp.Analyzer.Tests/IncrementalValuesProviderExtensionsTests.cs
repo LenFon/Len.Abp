@@ -29,7 +29,7 @@ public class IncrementalValuesProviderExtensionsTests
         );
 
         Assert.Empty(sources);
-        Assert.Contains(diagnostics, d => d.Id == "TEST001" && d.Severity == DiagnosticSeverity.Error);
+        Assert.Contains(diagnostics, d => d.Id == "LENABP005" && d.Severity == DiagnosticSeverity.Error);
     }
 
     /// <summary>
@@ -134,7 +134,7 @@ public class IncrementalValuesProviderExtensionsTests
             """
         );
 
-        Assert.Contains(diagnostics, d => d.Id == "TEST004" && d.Severity == DiagnosticSeverity.Error);
+        Assert.Contains(diagnostics, d => d.Id == "LENABP005" && d.Severity == DiagnosticSeverity.Error);
         Assert.Single(sources);
     }
 
@@ -156,7 +156,7 @@ public class IncrementalValuesProviderExtensionsTests
         );
 
         Assert.Empty(sources);
-        Assert.Contains(diagnostics, d => d.Id == "TEST005" && d.Severity == DiagnosticSeverity.Error);
+        Assert.Contains(diagnostics, d => d.Id == "LENABP005" && d.Severity == DiagnosticSeverity.Error);
     }
 
     /// <summary>
@@ -176,7 +176,7 @@ public class IncrementalValuesProviderExtensionsTests
             """
         );
 
-        Assert.Contains(diagnostics, d => d.Id == "TEST006" && d.Severity == DiagnosticSeverity.Error);
+        Assert.Contains(diagnostics, d => d.Id == "LENABP005" && d.Severity == DiagnosticSeverity.Error);
         Assert.Single(sources);
     }
 
@@ -215,7 +215,7 @@ public class IncrementalValuesProviderExtensionsTests
 
     private sealed class ThrowingGenerator : BasicGenerator<object>
     {
-        public ThrowingGenerator() : base("TEST001", "Len.Abp.Analyzer.Tests.IncrementalValuesProviderExtensionsTests+MarkerAttribute") { }
+        public ThrowingGenerator() : base("Len.Abp.Analyzer.Tests.IncrementalValuesProviderExtensionsTests+MarkerAttribute") { }
 
         protected override string CreateFileName((ClassData Class, object Data, string Version) context) => "x.g.cs";
 
@@ -227,7 +227,7 @@ public class IncrementalValuesProviderExtensionsTests
 
     private sealed class EmptyFileGenerator : BasicGenerator<object>
     {
-        public EmptyFileGenerator() : base("TEST002", "Len.Abp.Analyzer.Tests.IncrementalValuesProviderExtensionsTests+MarkerAttribute") { }
+        public EmptyFileGenerator() : base("Len.Abp.Analyzer.Tests.IncrementalValuesProviderExtensionsTests+MarkerAttribute") { }
 
         protected override string CreateFileName((ClassData Class, object Data, string Version) context) => string.Empty;
 
@@ -239,7 +239,7 @@ public class IncrementalValuesProviderExtensionsTests
 
     private sealed class NonEmptyFileGenerator : BasicGenerator<object>
     {
-        public NonEmptyFileGenerator() : base("TEST003", "Len.Abp.Analyzer.Tests.IncrementalValuesProviderExtensionsTests+MarkerAttribute") { }
+        public NonEmptyFileGenerator() : base("Len.Abp.Analyzer.Tests.IncrementalValuesProviderExtensionsTests+MarkerAttribute") { }
 
         protected override string CreateFileName((ClassData Class, object Data, string Version) context) => "sample.g.cs";
 
@@ -271,7 +271,7 @@ public class IncrementalValuesProviderExtensionsTests
         {
             var value = context.CompilationProvider
                 .Select((_, _) => 0)
-                .SelectAndReportExceptions<int, int>((_, _) => throw new InvalidOperationException("单值失败"), context, "TEST004")
+                .SelectAndReportExceptions<int, int>((_, _) => throw new InvalidOperationException("单值失败"), context)
                 .Select((x, _) => new FileWithName("x.g.cs", x.ToString()));
 
             value.AddSource(context);
@@ -289,7 +289,7 @@ public class IncrementalValuesProviderExtensionsTests
         {
             var values = context.CompilationProvider
                 .SelectMany((_, _) => SingleValueSource)
-                .SelectAndReportExceptions<int, int>(_ => throw new InvalidOperationException("多值失败"), context, "TEST005")
+                .SelectAndReportExceptions<int, int>(_ => throw new InvalidOperationException("多值失败"), context)
                 .Select((x, _) => new FileWithName("x.g.cs", x.ToString()));
 
             values.AddSource(context);
@@ -305,7 +305,7 @@ public class IncrementalValuesProviderExtensionsTests
         {
             var value = context.CompilationProvider
                 .Select((_, _) => 0)
-                .SelectAndReportExceptions<int, int>(_ => throw new InvalidOperationException("单值失败"), context, "TEST006")
+                .SelectAndReportExceptions<int, int>(_ => throw new InvalidOperationException("单值失败"), context)
                 .Select((x, _) => new FileWithName("x.g.cs", x.ToString()));
 
             value.AddSource(context);

@@ -19,7 +19,7 @@ public class NamedTypeSymbolExtensionsTests
         var data = GetClassData("namespace Demo.Sub { public class Sample { } }", "Demo.Sub.Sample");
 
         Assert.Equal("Demo.Sub", data.Namespace);
-        Assert.Equal("Sample", data.Name);
+        Assert.Equal("Sample", data.DeclarationName);
         Assert.Equal("Sample", data.SimpleName);
         Assert.Equal("Demo.Sub.Sample", data.FullName);
         Assert.Empty(data.ContainingTypes);
@@ -74,10 +74,10 @@ public class NamedTypeSymbolExtensionsTests
     }
 
     /// <summary>
-    /// 方法名与方法显示名都被收集，显示名去掉可空标记。
+    /// 方法名被收集，用于精确匹配分部钩子。
     /// </summary>
     [Fact]
-    public void GetClassData_CollectsMethods()
+    public void GetClassData_CollectsMethodNames()
     {
         var data = GetClassData(
             """
@@ -95,7 +95,6 @@ public class NamedTypeSymbolExtensionsTests
 
         Assert.Contains("Find", data.MethodNames);
         Assert.Contains("Run", data.MethodNames);
-        Assert.Contains(data.Methods, m => m.Contains("Find") && !m.Contains('?'));
     }
 
     /// <summary>

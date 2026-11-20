@@ -1,5 +1,7 @@
+using Len.Abp.Wpf.Mvvm;
 using Len.Abp.Wpf.Navigation.Regions;
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections.Specialized;
 using System.Windows.Controls;
 using Volo.Abp.DependencyInjection;
 using Xunit;
@@ -169,7 +171,106 @@ public class ContentControlRegionAdapterTests
         });
     }
 
-    private static ContentControlRegionAdapter CreateAdapter() => new() { AbpLazyServiceProvider = new AbpLazyServiceProvider(new ServiceCollection().AddOptions().BuildServiceProvider()) };
+    /// <summary>
+    /// 解除适配后，旧区域不再驱动控件。
+    /// </summary>
+    /// <remarks>
+    /// 回归：<c>Adapt</c> 订阅了区域的 <c>Views</c> / <c>ActiveViews</c>，
+    /// 而 <c>Detach</c> 只清空 <c>Content</c>、从不解订阅。
+    /// 区域改名重建时旧区域被丢弃，但它的处理器仍会写入控件，
+    /// 且控件持有闭包导致旧区域与视图无法回收。
+    /// </remarks>
+    [Fact]
+    public void Detach_UnsubscribesAndStopsDrivingControl()
+    {
+        Sta.Run(() =>
+        {
+            var adapter = CreateAdapter();
+            var contentControl = new ContentControl();
+            var region = Initialize(adapter, contentControl, "MainRegion", "MainView");
+
+            var view = new FakeView("demo");
+            region.Add(view);
+            region.Activate(view);
+            Assert.Same(view, contentControl.Content);
+
+            ((IRegionAdapterDetach)adapter).Detach(region, contentControl);
+
+            Assert.Null(contentControl.Content);
+
+            // 旧区域已被丢弃：它的激活不应再写入控件。
+            var another = new FakeView("another");
+            region.Add(another);
+            region.Activate(another);
+
+            Assert.Null(contentControl.Content);
+        });
+    }
+
+    /// <summary>
+    /// 派生类漏调 <c>base.Detach</c> 时，订阅清理由基类的显式接口实现兜底。
+    /// </summary>
+    /// <remarks>
+    /// 回归：这条约束原先只写在 XML 注释里，漏调不会编译报错，
+    /// 后果是事件订阅泄漏——被丢弃的区域继续驱动控件，控件因持有闭包无法回收。
+    /// 现在 <see cref="IRegionAdapterDetach.Detach"/> 的显式实现先执行
+    /// <c>OnDetach</c> 登记的动作，再调用派生类的 <c>Detach</c>，
+    /// 因此漏调的后果降级为"控件状态未清除"（重建时立刻暴露），而不是静默泄漏。
+    /// </remarks>
+    [Fact]
+    public void Detach_OverrideWithoutCallingBase_StillUnsubscribes()
+    {
+        Sta.Run(() =>
+        {
+            var adapter = new ForgetfulAdapter(
+                new AbpLazyServiceProvider(new ServiceCollection().AddOptions().BuildServiceProvider())
+            );
+            var contentControl = new ContentControl();
+            var region = Initialize(adapter, contentControl, "MainRegion", "MainView");
+
+            var view = new FakeView("demo");
+            region.Add(view);
+            region.Activate(view);
+            Assert.Same(view, contentControl.Content);
+
+            ((IRegionAdapterDetach)adapter).Detach(region, contentControl);
+
+            // 派生类没清 Content（它漏调了 base，也没自己清），但订阅必须已解除。
+            var another = new FakeView("another");
+            region.Add(another);
+            region.Activate(another);
+
+            Assert.NotSame(another, contentControl.Content);
+        });
+    }
+
+    /// <summary>
+    /// 重写 <c>Detach</c> 但故意不调用 <c>base.Detach</c> 的适配器。
+    /// </summary>
+    private sealed class ForgetfulAdapter(IAbpLazyServiceProvider provider) : BasicRegionAdapter<ContentControl>(provider)
+    {
+        protected override void Adapt(IRegion region, ContentControl regionTarget)
+        {
+            void OnActiveViewsChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+                regionTarget.Content = region.ActiveViews.LastOrDefault();
+
+            region.ActiveViews.CollectionChanged += OnActiveViewsChanged;
+
+            // 订阅必须通过 OnDetach 登记，基类才能在 Detach 时解除它。
+            OnDetach(region, () => region.ActiveViews.CollectionChanged -= OnActiveViewsChanged);
+        }
+
+        protected override IRegion CreateRegion(string regionName, IView ownerView) =>
+            new SingleActiveRegion(regionName, ownerView.ViewName, ownerView);
+
+        // 故意不调用 base.Detach：验证基类的显式接口实现仍会解除订阅。
+        protected override void Detach(IRegion region, ContentControl regionTarget)
+        {
+        }
+    }
+
+    private static ContentControlRegionAdapter CreateAdapter() =>
+        new(new AbpLazyServiceProvider(new ServiceCollection().AddOptions().BuildServiceProvider()));
 
     /// <summary>
     /// <see cref="IRegionAdapter.Initialize"/> 是显式接口实现，测试中通过接口调用。

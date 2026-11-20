@@ -5,26 +5,22 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using Xunit;
 
-// Len.Abp.Wpf.Navigation.Region（附加属性）与 Len.Abp.Wpf.Navigation.Regions.Region（区域实现）
-// 同名，因此这里为附加属性设置别名。
-using RegionProperties = Len.Abp.Wpf.Navigation.Region;
-
 namespace Len.Abp.Wpf.Tests;
 
 [Collection(GlobalServiceProviderCollection.Name)]
 public class RegionAttachedPropertyTests
 {
     /// <summary>
-    /// Name 附加属性注册在 Region 类型上。
+    /// Name 附加属性注册在 <see cref="RegionHost"/> 类型上。
     /// </summary>
     [Fact]
-    public void NameProperty_IsRegisteredOnRegionType()
+    public void NameProperty_IsRegisteredOnRegionHostType()
     {
-        // XAML 命名空间映射到 Len.Abp.Wpf.Navigation，因此该附加属性必须由 Region 声明，
-        // `len:Region.Name` 才能解析。
-        Assert.Equal("Region", RegionProperties.NameProperty.OwnerType.Name);
-        Assert.Equal("Name", RegionProperties.NameProperty.Name);
-        Assert.Equal(typeof(string), RegionProperties.NameProperty.PropertyType);
+        // XAML 命名空间映射到 Len.Abp.Wpf.Navigation，因此该附加属性必须由 RegionHost 声明，
+        // `len:RegionHost.Name` 才能解析。
+        Assert.Equal("RegionHost", RegionHost.NameProperty.OwnerType.Name);
+        Assert.Equal("Name", RegionHost.NameProperty.Name);
+        Assert.Equal(typeof(string), RegionHost.NameProperty.PropertyType);
     }
 
     /// <summary>
@@ -42,9 +38,9 @@ public class RegionAttachedPropertyTests
             AbpServiceProvider.Initialize(services.BuildServiceProvider());
 
             var element = new DependencyObject();
-            RegionProperties.SetName(element, "MainRegion");
+            RegionHost.SetName(element, "MainRegion");
 
-            Assert.Equal("MainRegion", RegionProperties.GetName(element));
+            Assert.Equal("MainRegion", RegionHost.GetName(element));
         });
     }
 
@@ -59,7 +55,7 @@ public class RegionAttachedPropertyTests
     [Fact]
     public void GetName_NullTarget_Throws()
     {
-        Assert.Throws<ArgumentNullException>(() => RegionProperties.GetName(null!));
+        Assert.Throws<ArgumentNullException>(() => RegionHost.GetName(null!));
     }
 
     private static void RunOnSta(Action action)

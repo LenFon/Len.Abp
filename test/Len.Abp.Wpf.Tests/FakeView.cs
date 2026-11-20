@@ -12,4 +12,8 @@ internal sealed class FakeView(string viewName, object? viewModel = null) : IVie
 
     /// <inheritdoc/>
     public string ViewName { get; } = viewName;
+
+    /// <inheritdoc/>
+    public IReadOnlyDictionary<string, Type?> RequiredNavigationParameters { get; init; } =
+        new Dictionary<string, Type?>(StringComparer.OrdinalIgnoreCase);
 }

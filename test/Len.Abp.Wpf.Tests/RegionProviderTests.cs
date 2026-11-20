@@ -48,6 +48,39 @@ public class RegionProviderTests
     }
 
     /// <summary>
+    /// <see cref="IRegionProvider.Remove"/> 摘除指定区域，不影响其它区域。
+    /// </summary>
+    /// <remarks>
+    /// 元素卸载时用它摘除本轮创建的区域：区域不摘除会永久残留，
+    /// 重新加载时再登记回去就会出现同名区域，导航可能命中早已失效的实例。
+    /// </remarks>
+    [Fact]
+    public void Remove_DetachesOnlyTargetRegion()
+    {
+        var provider = new RegionProvider();
+        var target = new Region("a", "view1");
+        var other = new Region("b", "view2");
+        provider.Add(target);
+        provider.Add(other);
+
+        var removed = provider.Remove(target);
+
+        Assert.True(removed);
+        Assert.Same(other, Assert.Single(provider.Regions));
+    }
+
+    /// <summary>
+    /// 摘除不在提供程序中的区域返回 <see langword="false"/>，不抛异常。
+    /// </summary>
+    [Fact]
+    public void Remove_UnknownRegion_ReturnsFalse()
+    {
+        var provider = new RegionProvider();
+
+        Assert.False(provider.Remove(new Region("a", "view1")));
+    }
+
+    /// <summary>
     /// 同名视图的不同实例各自拥有区域时，只拆除目标实例的子树。
     /// </summary>
     [Fact]
@@ -122,6 +155,40 @@ public class RegionProviderTests
         provider.RemoveOwnedRegions(new FakeView("view1"));
 
         Assert.Single(provider.Regions);
+    }
+
+    /// <summary>
+    /// Clear 清空所有区域，并返回其中的视图。
+    /// </summary>
+    [Fact]
+    public void Clear_RemovesAllRegionsAndReturnsViews()
+    {
+        var provider = new RegionProvider();
+        var first = new FakeView("view1");
+        var second = new FakeView("view2");
+        var regionA = new Region("a", "view1", first);
+        var regionB = new Region("b", "view2", second);
+        regionA.Add(first);
+        regionB.Add(second);
+        provider.Add(regionA);
+        provider.Add(regionB);
+
+        var views = provider.Clear();
+
+        Assert.Empty(provider.Regions);
+        Assert.Equal([first, second], views);
+    }
+
+    /// <summary>
+    /// 空提供程序上调用 Clear 返回空集合。
+    /// </summary>
+    [Fact]
+    public void Clear_EmptyProvider_ReturnsEmpty()
+    {
+        var provider = new RegionProvider();
+
+        Assert.Empty(provider.Clear());
+        Assert.Empty(provider.Regions);
     }
 
     /// <summary>

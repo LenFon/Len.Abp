@@ -475,19 +475,6 @@ public class GeneratedCodeFormattingTests
             }
             """);
 
-        Add("Mvvm/MissingParameterlessConstructor", () => new MvvmGenerator(), """
-            namespace Demo
-            {
-                public class PageViewModel { }
-
-                [Len.Abp.Wpf.Mvvm.View<PageViewModel>(ViewName = "page")]
-                public partial class PageView : Len.Abp.Wpf.FrameworkElement
-                {
-                    public PageView(int value) { }
-                }
-            }
-            """);
-
         Add("Mvvm/Record", () => new MvvmGenerator(), """
             namespace Demo
             {
@@ -620,6 +607,19 @@ public class GeneratedCodeFormattingTests
             {
                 [Len.Abp.Wpf.AttachedDependencyProperty<string>("Title", IsReadOnly = true)]
                 public static partial class MyAttached { }
+            }
+            """);
+
+        Add("AttachedDependencyProperty/AllHooks", () => new AttachedDependencyPropertyGenerator(), """
+            namespace Demo
+            {
+                [Len.Abp.Wpf.AttachedDependencyProperty<string>("Title")]
+                public static partial class MyAttached
+                {
+                    static partial void CoerceTitle(global::System.Windows.DependencyObject element, string value, ref string result) { }
+                    static partial void IsTitleValid(string value, ref bool result) { }
+                    static partial void OnTitleChanged(global::System.Windows.DependencyObject element, string oldValue, string newValue) { }
+                }
             }
             """);
 

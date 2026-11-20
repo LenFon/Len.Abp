@@ -30,10 +30,10 @@ public class ViewsCollectionTests
     }
 
     /// <summary>
-    /// 构造时按视图名称对已存在的元数据排序。
+    /// 构造时按插入顺序保留已存在的元数据。
     /// </summary>
     [Fact]
-    public void Constructor_OrdersExistingItemsByViewName()
+    public void Constructor_PreservesInsertionOrder()
     {
         var metadata = new ObservableCollection<RegionMetadata>
         {
@@ -44,7 +44,7 @@ public class ViewsCollectionTests
 
         var collection = new ViewsCollection(metadata, _ => true);
 
-        Assert.Equal(["alpha", "bravo", "charlie"], collection.Select(v => v.ViewName));
+        Assert.Equal(["charlie", "alpha", "bravo"], collection.Select(v => v.ViewName));
     }
 
     /// <summary>
@@ -189,10 +189,10 @@ public class ViewsCollectionTests
     }
 
     /// <summary>
-    /// 集合按视图名称排序。
+    /// 集合按插入顺序排列，而不是按视图名称。
     /// </summary>
     [Fact]
-    public void Collection_IsOrderedByViewName()
+    public void Collection_PreservesInsertionOrder()
     {
         var metadata = new ObservableCollection<RegionMetadata>();
         var collection = new ViewsCollection(metadata, _ => true);
@@ -201,7 +201,7 @@ public class ViewsCollectionTests
         metadata.Add(new RegionMetadata(new FakeView("alpha")));
         metadata.Add(new RegionMetadata(new FakeView("bravo")));
 
-        Assert.Equal(["alpha", "bravo", "charlie"], collection.Select(v => v.ViewName));
+        Assert.Equal(["charlie", "alpha", "bravo"], collection.Select(v => v.ViewName));
     }
 
     /// <summary>
@@ -255,5 +255,96 @@ public class ViewsCollectionTests
         metadata.Remove(item);
 
         Assert.Empty(actions);
+    }
+
+    /// <summary>
+    /// 空元数据集合构造出空视图集合，计数为零且可枚举。
+    /// </summary>
+    [Fact]
+    public void Constructor_EmptyMetadata_ProducesEmptyCollection()
+    {
+        var collection = new ViewsCollection([], _ => true);
+
+        Assert.Equal(0, collection.Count);
+        Assert.Empty(collection);
+        Assert.False(collection.Contains(new FakeView("a")));
+    }
+
+    /// <summary>
+    /// 过滤条件恒为 false 时集合始终为空，即使元数据有内容。
+    /// </summary>
+    [Fact]
+    public void FilterAlwaysFalse_KeepsCollectionEmpty()
+    {
+        var metadata = new ObservableCollection<RegionMetadata>
+        {
+            new(new FakeView("a")),
+            new(new FakeView("b")),
+        };
+
+        var collection = new ViewsCollection(metadata, _ => false);
+
+        Assert.Equal(0, collection.Count);
+        Assert.Empty(collection);
+    }
+
+    /// <summary>
+    /// 大量元数据按插入顺序全部进入集合。
+    /// </summary>
+    [Fact]
+    public void ManyMetadataItems_PreserveOrder()
+    {
+        var metadata = new ObservableCollection<RegionMetadata>(
+            Enumerable.Range(0, 1_000).Select(i => new RegionMetadata(new FakeView($"v{i}")))
+        );
+
+        var collection = new ViewsCollection(metadata, _ => true);
+
+        Assert.Equal(1_000, collection.Count);
+        Assert.Equal("v0", collection.First().ViewName);
+        Assert.Equal("v999", collection.Last().ViewName);
+    }
+
+    /// <summary>
+    /// 清空元数据集合时发出 Reset 通知并清空视图集合。
+    /// </summary>
+    [Fact]
+    public void ClearMetadata_ResetsCollection()
+    {
+        var metadata = new ObservableCollection<RegionMetadata>
+        {
+            new(new FakeView("a")),
+            new(new FakeView("b")),
+        };
+        var collection = new ViewsCollection(metadata, _ => true);
+
+        var actions = new List<NotifyCollectionChangedAction>();
+        collection.CollectionChanged += (_, e) => actions.Add(e.Action);
+
+        metadata.Clear();
+
+        Assert.Equal([NotifyCollectionChangedAction.Reset], actions);
+        Assert.Equal(0, collection.Count);
+    }
+
+    /// <summary>
+    /// 同一视图重复加入元数据时集合按元数据条数计数，不做去重。
+    /// </summary>
+    /// <remarks>
+    /// 去重由 <see cref="Region.Add"/> 负责；集合本身只反映元数据内容。
+    /// </remarks>
+    [Fact]
+    public void DuplicateViewInstances_AreCountedPerMetadataEntry()
+    {
+        var view = new FakeView("a");
+        var metadata = new ObservableCollection<RegionMetadata>
+        {
+            new(view),
+            new(view),
+        };
+
+        var collection = new ViewsCollection(metadata, _ => true);
+
+        Assert.Equal(2, collection.Count);
     }
 }

@@ -1,12 +1,11 @@
 using Len.Abp.Wpf.Mvvm;
+using Len.Abp.Wpf.Navigation;
 using Len.Abp.Wpf.Navigation.Regions;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using System.Windows.Controls;
 using Xunit;
 
-// 附加属性 Len.Abp.Wpf.Navigation.Region 与区域实现 Len.Abp.Wpf.Navigation.Regions.Region 同名。
-using RegionImpl = Len.Abp.Wpf.Navigation.Regions.Region;
 
 namespace Len.Abp.Wpf.Tests;
 
@@ -43,11 +42,11 @@ public class RegionBuilderTests
             var adapter = new RecordingAdapter();
             var finder = new StubAdapterFinder(adapter);
             InitializeStaticProvider();
-            var builder = new RegionBuilder(finder);
+            var builder = new RegionBuilder(finder, new RegionProvider());
             var view = new FakeViewControl { ViewName = "MainView" };
             var host = new ContentControl();
             view.Content = host;
-            Navigation.Region.SetName(host, "MainRegion");
+            RegionHost.SetName(host, "MainRegion");
 
             builder.Build(host);
             host.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
@@ -67,7 +66,7 @@ public class RegionBuilderTests
         Sta.Run(() =>
         {
             var adapter = new RecordingAdapter();
-            var builder = new RegionBuilder(new StubAdapterFinder(adapter));
+            var builder = new RegionBuilder(new StubAdapterFinder(adapter), new RegionProvider());
 
             builder.Build(new DependencyObject());
 
@@ -85,9 +84,9 @@ public class RegionBuilderTests
         {
             InitializeStaticProvider();
             var adapter = new RecordingAdapter();
-            var builder = new RegionBuilder(new StubAdapterFinder(adapter));
+            var builder = new RegionBuilder(new StubAdapterFinder(adapter), new RegionProvider());
             var host = new ContentControl();
-            Navigation.Region.SetName(host, "MainRegion");
+            RegionHost.SetName(host, "MainRegion");
 
             builder.Build(host);
 
@@ -108,11 +107,11 @@ public class RegionBuilderTests
         Sta.Run(() =>
         {
             InitializeStaticProvider();
-            var builder = new RegionBuilder(new ThrowingAdapterFinder());
+            var builder = new RegionBuilder(new ThrowingAdapterFinder(), new RegionProvider());
             var view = new FakeViewControl { ViewName = "MainView" };
             var host = new ContentControl();
             view.Content = host;
-            Navigation.Region.SetName(host, "MainRegion");
+            RegionHost.SetName(host, "MainRegion");
 
             builder.Build(host);
 
@@ -134,17 +133,77 @@ public class RegionBuilderTests
         {
             InitializeStaticProvider();
             var adapter = new RecordingAdapter();
-            var builder = new RegionBuilder(new StubAdapterFinder(adapter));
+            var builder = new RegionBuilder(new StubAdapterFinder(adapter), new RegionProvider());
             var view = new FakeViewControl { ViewName = "MainView" };
             var host = new ContentControl();
             view.Content = host;
-            Navigation.Region.SetName(host, "MainRegion");
+            RegionHost.SetName(host, "MainRegion");
 
             builder.Build(host);
             host.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
             host.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
 
             Assert.Equal(1, adapter.InitializeCount);
+        });
+    }
+
+    /// <summary>
+    /// 元素卸载后重新加载时恢复区域，不重建。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 回归：静态去重表曾把"已处理"永久记录，元素被移到新窗口后
+    /// <c>Loaded</c> 再次触发也不会创建区域，界面上的区域永久失效。
+    /// 修复后卸载会清掉"本轮已创建"标记。
+    /// </para>
+    /// <para>
+    /// 回归：卸载后重新加载曾改为<b>重建</b>区域，但适配器在初始化时
+    /// 把 <c>Content</c> / <c>ItemsSource</c> 单向指向区域中的视图，卸载不清除这些引用，
+    /// 重建时适配器判定"控件状态已被占用"并抛异常，区域从此永久失效。
+    /// 现在改为复用同一个区域：卸载只摘除，重新加载登记回去。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Build_UnloadedThenLoaded_RestoresSameRegion()
+    {
+        Sta.Run(() =>
+        {
+            InitializeStaticProvider();
+            var adapter = new RecordingAdapter();
+            var builder = new RegionBuilder(new StubAdapterFinder(adapter), new RegionProvider());
+            var view = new FakeViewControl { ViewName = "MainView" };
+            var host = new ContentControl();
+            view.Content = host;
+            RegionHost.SetName(host, "MainRegion");
+
+            builder.Build(host);
+            host.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            host.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+            host.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+            // 只创建一次：重新加载复用卸载时摘除的区域。
+            Assert.Equal(1, adapter.InitializeCount);
+        });
+    }
+
+    /// <summary>
+    /// 加载事件来自非 <see cref="FrameworkElement"/> 时直接忽略。
+    /// </summary>
+    /// <remarks>
+    /// <c>Loaded</c> 的发送方总是 <see cref="FrameworkElement"/>，但处理器是公开可调用的
+    /// 事件订阅，类型守卫保证误用时不抛 <see cref="InvalidCastException"/>。
+    /// </remarks>
+    [Fact]
+    public void OnElementLoaded_NonFrameworkElementSender_IsIgnored()
+    {
+        Sta.Run(() =>
+        {
+            var adapter = new RecordingAdapter();
+            var builder = new RegionBuilder(new StubAdapterFinder(adapter), new RegionProvider());
+
+            builder.OnElementLoaded(new DependencyObject(), new RoutedEventArgs());
+
+            Assert.Null(adapter.RegionName);
         });
     }
 
@@ -172,7 +231,7 @@ public class RegionBuilderTests
             RegionName = regionName;
             OwnerView = ownerView;
 
-            return new RegionImpl(regionName, ownerView.ViewName, ownerView);
+            return new Region(regionName, ownerView.ViewName, ownerView);
         }
     }
 

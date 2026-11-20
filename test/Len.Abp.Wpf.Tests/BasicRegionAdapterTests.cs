@@ -150,10 +150,11 @@ public class BasicRegionAdapterTests
 
         var provider = services.BuildServiceProvider();
 
-        return new TestRegionAdapter { AbpLazyServiceProvider = new AbpLazyServiceProvider(provider) };
+        return new TestRegionAdapter(new AbpLazyServiceProvider(provider));
     }
 
-    private sealed class TestRegionAdapter : BasicRegionAdapter<ContentControl>
+    private sealed class TestRegionAdapter(IAbpLazyServiceProvider abpLazyServiceProvider)
+        : BasicRegionAdapter<ContentControl>(abpLazyServiceProvider)
     {
         public bool AdaptCalled { get; private set; }
 

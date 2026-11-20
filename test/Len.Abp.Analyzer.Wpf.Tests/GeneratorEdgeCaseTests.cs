@@ -22,6 +22,8 @@ public class GeneratorEdgeCaseTests
             {
                 public static DependencyProperty Register(string name, System.Type propertyType, System.Type ownerType, PropertyMetadata typeMetadata, ValidateValueCallback validateValueCallback) => new();
                 public static DependencyPropertyKey RegisterReadOnly(string name, System.Type propertyType, System.Type ownerType, PropertyMetadata typeMetadata, ValidateValueCallback validateValueCallback) => new();
+                public static DependencyProperty RegisterAttached(string name, System.Type propertyType, System.Type ownerType, PropertyMetadata defaultMetadata, ValidateValueCallback? validateValueCallback) => new();
+                public static DependencyPropertyKey RegisterAttachedReadOnly(string name, System.Type propertyType, System.Type ownerType, PropertyMetadata defaultMetadata, ValidateValueCallback? validateValueCallback) => new();
             }
             public class PropertyMetadata { public PropertyMetadata(object defaultValue, PropertyChangedCallback propertyChangedCallback, CoerceValueCallback coerceValueCallback) { } }
             public class FrameworkPropertyMetadata : PropertyMetadata
@@ -411,6 +413,10 @@ public class GeneratorEdgeCaseTests
     /// <summary>
     /// 窄整型与 float 默认值需要显式转换，保证元数据中的值类型与属性类型一致。
     /// </summary>
+    /// <remarks>
+    /// 不覆盖 <c>decimal</c>：它不是合法的特性参数类型，编译器不允许
+    /// <c>DefaultValue = 0.5m</c>，对应分支在真实代码里不可达。
+    /// </remarks>
     [Theory]
     [InlineData("float", "0.5f", "(float)(0.5)")]
     [InlineData("byte", "(byte)5", "(byte)(5)")]
@@ -496,12 +502,96 @@ public class GeneratorEdgeCaseTests
     }
 
     /// <summary>
+    /// 引用类型属性的强制值回调不产生可空警告。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 回归：生成器原本无条件产出 <c>{Type} result = default;</c>。生成文件开了
+    /// <c>#nullable enable</c>，对引用类型会报 CS8600（把 null 转成不可空类型）
+    /// 与 CS8601（可能的 null 赋值）。仓库没开 <c>TreatWarningsAsErrors</c> 时只是警告，
+    /// 使用者一开就构建失败。
+    /// </para>
+    /// <para>
+    /// 修法是引用类型用 <c>default!</c>。不能改成 <c>{Type}? result</c>：
+    /// 分部方法的参数是 <c>ref {Type}</c>，可空标注不匹配会报 CS8620。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ReferenceTypeCoerceHook_DoesNotProduceNullableWarnings()
+    {
+        var (sources, compileDiagnostics, _) = GeneratorTestHost.RunAllWithWarnings(
+            [new DependencyPropertyGenerator()],
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.DependencyProperty<System.Collections.Generic.List<string>>("Tags")]
+                    public partial class MyControl : System.Windows.DependencyObject
+                    {
+                        static partial void CoerceTags(System.Collections.Generic.List<string> value, ref System.Collections.Generic.List<string> result) { }
+                    }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        var nullableWarnings = compileDiagnostics
+            .Where(d => d.Id is "CS8600" or "CS8601" or "CS8620")
+            .Select(d => d.ToString())
+            .ToArray();
+
+        Assert.True(
+            nullableWarnings.Length == 0,
+            "引用类型强制值回调产生了可空警告：" + Environment.NewLine
+                + string.Join(Environment.NewLine, nullableWarnings)
+                + Environment.NewLine + "---- 生成代码 ----" + Environment.NewLine + generated.Text
+        );
+
+        Assert.Contains("result = default!;", generated.Text);
+    }
+
+    /// <summary>
+    /// 值类型属性的强制值回调仍用普通 <c>default</c>。
+    /// </summary>
+    /// <remarks>
+    /// 对照组：<c>default!</c> 只对引用类型有意义。值类型上加 <c>!</c> 虽然能编译，
+    /// 但会让生成代码出现无意义的抑制符，掩盖真正的可空问题。
+    /// </remarks>
+    [Fact]
+    public void ValueTypeCoerceHook_UsesPlainDefault()
+    {
+        var (sources, _, _) = GeneratorTestHost.RunAllWithWarnings(
+            [new DependencyPropertyGenerator()],
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.DependencyProperty<int>("Count")]
+                    public partial class MyControl : System.Windows.DependencyObject
+                    {
+                        static partial void CoerceCount(int value, ref int result) { }
+                    }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        Assert.Contains("result = default;", generated.Text);
+        Assert.DoesNotContain("result = default!;", generated.Text);
+    }
+
+    /// <summary>
     /// 静态类宿主生成 <c>static partial class</c>，修饰符顺序必须是 <c>static partial</c>。
     /// </summary>
     /// <remarks>
     /// 写成 <c>partial static class</c> 会报 CS0267；漏掉 <c>static</c> 则与用户声明的静态类冲突。
-    /// 注意：WPF 在运行时要求附加属性的 <c>ownerType</c> 派生自 <c>DependencyObject</c>，
-    /// 因此静态类只适合承载附加路由事件，附加依赖属性应放在派生自 <c>DependencyObject</c> 的类上。
+    /// 注意：生成的注册调用是 <c>DependencyProperty.Register</c>，它在运行时要求
+    /// <c>ownerType</c> 派生自 <c>DependencyObject</c>，因此静态类只适合承载附加路由事件，
+    /// 附加依赖属性应放在派生自 <c>DependencyObject</c> 的类上。
     /// </remarks>
     [Fact]
     public void StaticHost_GeneratesStaticPartialDeclaration()
@@ -529,8 +619,7 @@ public class GeneratorEdgeCaseTests
     /// 静态类上的只读附加属性不能生成 <c>protected</c> 成员（CS1057）。
     /// </summary>
     /// <remarks>
-    /// 只验证生成代码可编译。运行时 WPF 仍会拒绝静态类作为附加属性的 ownerType，
-    /// 那是框架约束，不是生成器能修复的问题。
+    /// 只验证生成代码可编译。注册走 <c>RegisterAttached</c>，静态类宿主在运行期也合法。
     /// </remarks>
     [Fact]
     public void StaticHost_ReadOnlyAttachedProperty_UsesAccessibleModifier()
@@ -552,6 +641,101 @@ public class GeneratorEdgeCaseTests
         Assert.Contains("private static void SetTitle(", generated.Text);
         Assert.DoesNotContain("protected static void SetTitle(", generated.Text);
         Assert.Empty(errors);
+    }
+
+    /// <summary>
+    /// 附加依赖属性用 <c>RegisterAttached</c> 注册，静态类宿主在运行期也合法。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 回归：原实现用 <c>DependencyProperty.Register</c>，它要求 <c>ownerType</c>
+    /// 派生自 <c>DependencyObject</c>，静态类宿主会在类型初始化时抛
+    /// 「类型必须派生自 DependencyObject」。
+    /// </para>
+    /// <para>
+    /// <c>RegisterAttached</c> 没有该限制，且 XAML 才能把属性识别为附加属性。
+    /// 注意它的元数据参数名是 <c>defaultMetadata</c>，与 <c>Register</c> 的
+    /// <c>typeMetadata</c> 不同，写错会报 CS1739。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void AttachedProperty_UsesRegisterAttached()
+    {
+        var (sources, errors) = GeneratorTestHost.RunAndCompile(
+            new AttachedDependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.AttachedDependencyProperty<string>("Title")]
+                    public static partial class MyAttached { }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        Assert.Empty(errors);
+        Assert.Contains("DependencyProperty.RegisterAttached(", generated.Text);
+        Assert.Contains("defaultMetadata:", generated.Text);
+        Assert.DoesNotContain("DependencyProperty.Register(", generated.Text);
+    }
+
+    /// <summary>
+    /// 只读附加属性用 <c>RegisterAttachedReadOnly</c> 注册。
+    /// </summary>
+    [Fact]
+    public void ReadOnlyAttachedProperty_UsesRegisterAttachedReadOnly()
+    {
+        var (sources, errors) = GeneratorTestHost.RunAndCompile(
+            new AttachedDependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.AttachedDependencyProperty<string>("Title", IsReadOnly = true)]
+                    public static partial class MyAttached { }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        Assert.Empty(errors);
+        Assert.Contains("DependencyProperty.RegisterAttachedReadOnly(", generated.Text);
+        Assert.Contains("defaultMetadata:", generated.Text);
+    }
+
+    /// <summary>
+    /// 非附加依赖属性仍用 <c>Register</c>，元数据参数名是 <c>typeMetadata</c>。
+    /// </summary>
+    /// <remarks>
+    /// 对照组：两组 API 的参数名不同，改附加版本时不能把实例版本一起改错。
+    /// </remarks>
+    [Fact]
+    public void InstanceProperty_StillUsesRegisterWithTypeMetadata()
+    {
+        var (sources, errors) = GeneratorTestHost.RunAndCompile(
+            new DependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.DependencyProperty<string>("Title")]
+                    public partial class MyControl : System.Windows.DependencyObject { }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        Assert.Empty(errors);
+        Assert.Contains("DependencyProperty.Register(", generated.Text);
+        Assert.Contains("typeMetadata:", generated.Text);
+        Assert.DoesNotContain("RegisterAttached", generated.Text);
     }
 
     /// <summary>
@@ -579,5 +763,220 @@ public class GeneratorEdgeCaseTests
         var generated = Assert.Single(sources);
         Assert.Contains("static partial class Outer", generated.Text);
         Assert.Empty(errors);
+    }
+
+    /// <summary>
+    /// 密封类上的只读依赖属性不产生 CS0273。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 回归：原实现把密封宿主的 setter 降级为 <c>public</c>，而属性本身已是 <c>public</c>，
+    /// 访问器可访问性必须比属性更严格，编译器报 CS0273。
+    /// </para>
+    /// <para>
+    /// 正确做法是去掉访问器修饰符（等价于继承属性本身的可访问性），
+    /// 而不是降级为 <c>public</c>。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void SealedClass_ReadOnlyProperty_SetterHasNoModifier()
+    {
+        var (sources, errors) = GeneratorTestHost.RunAndCompile(
+            new DependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.DependencyProperty<string>("Title", IsReadOnly = true)]
+                    public sealed partial class MyControl : System.Windows.DependencyObject { }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        Assert.Empty(errors);
+        Assert.Contains("set { SetValue(TitlePropertyKey, value); }", generated.Text);
+        Assert.DoesNotContain("public set", generated.Text);
+    }
+
+    /// <summary>
+    /// 非密封类上的只读依赖属性仍生成 <c>protected</c> setter。
+    /// </summary>
+    /// <remarks>
+    /// 对照组：降级只针对密封宿主，不能把普通类的封装性一起削掉。
+    /// </remarks>
+    [Fact]
+    public void NonSealedClass_ReadOnlyProperty_SetterStaysProtected()
+    {
+        var (sources, errors) = GeneratorTestHost.RunAndCompile(
+            new DependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.DependencyProperty<string>("Title", IsReadOnly = true)]
+                    public partial class MyControl : System.Windows.DependencyObject { }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        Assert.Empty(errors);
+        Assert.Contains("protected set { SetValue(TitlePropertyKey, value); }", generated.Text);
+    }
+
+    /// <summary>
+    /// 显式写 <c>UpdateSourceTrigger.Default</c> 时不写出该参数。
+    /// </summary>
+    /// <remarks>
+    /// 回归：WPF 的 <c>FrameworkPropertyMetadata</c> 构造函数拒绝 <c>Default</c>——
+    /// 「不能将 DefaultUpdateSourceTrigger 设置为 UpdateSourceTrigger.Default；这样会创建循环定义」。
+    /// 异常发生在静态字段初始化阶段，表现为 <c>TypeInitializationException</c>。
+    /// </remarks>
+    [Fact]
+    public void ExplicitDefaultUpdateSourceTrigger_IsOmitted()
+    {
+        var (sources, errors) = GeneratorTestHost.RunAndCompile(
+            new DependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.DependencyProperty<string>("Title", UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.Default)]
+                    public partial class MyControl : System.Windows.DependencyObject { }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        Assert.Empty(errors);
+        Assert.DoesNotContain("defaultUpdateSourceTrigger:", generated.Text);
+    }
+
+    /// <summary>
+    /// 非 Default 的 <c>UpdateSourceTrigger</c> 仍然写出。
+    /// </summary>
+    /// <remarks>
+    /// 对照组：省略只针对 <c>Default</c>，其余取值必须保留，否则设置会被静默丢弃。
+    /// </remarks>
+    [Fact]
+    public void NonDefaultUpdateSourceTrigger_IsEmitted()
+    {
+        var (sources, errors) = GeneratorTestHost.RunAndCompile(
+            new DependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.DependencyProperty<string>("Title", UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged)]
+                    public partial class MyControl : System.Windows.DependencyObject { }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        Assert.Empty(errors);
+        Assert.Contains(
+            "defaultUpdateSourceTrigger: global::System.Windows.Data.UpdateSourceTrigger.PropertyChanged",
+            generated.Text
+        );
+    }
+
+    /// <summary>
+    /// 未定义的枚举值生成强制转换，而不是 <c>global::8</c> 这种非法代码。
+    /// </summary>
+    /// <remarks>
+    /// <c>TypedConstant.ToCSharpString()</c> 对未定义值给出纯数字，
+    /// 直接拼 <c>global::</c> 会生成 <c>global::8</c>，编译报 CS1001。
+    /// </remarks>
+    [Fact]
+    public void UndefinedFlagsValue_GeneratesCast()
+    {
+        var (sources, errors) = GeneratorTestHost.RunAndCompile(
+            new DependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.DependencyProperty<string>("Title", Flags = (System.Windows.FrameworkPropertyMetadataOptions)8)]
+                    public partial class MyControl : System.Windows.DependencyObject { }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        Assert.Empty(errors);
+        Assert.Contains("flags: (global::System.Windows.FrameworkPropertyMetadataOptions)(8)", generated.Text);
+    }
+
+    /// <summary>
+    /// 未定义的 <c>UpdateSourceTrigger</c> 值生成强制转换。
+    /// </summary>
+    [Fact]
+    public void UndefinedUpdateSourceTrigger_GeneratesCast()
+    {
+        var (sources, errors) = GeneratorTestHost.RunAndCompile(
+            new DependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.DependencyProperty<string>("Title", UpdateSourceTrigger = (System.Windows.Data.UpdateSourceTrigger)9)]
+                    public partial class MyControl : System.Windows.DependencyObject { }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        Assert.Empty(errors);
+        Assert.Contains(
+            "defaultUpdateSourceTrigger: (global::System.Windows.Data.UpdateSourceTrigger)(9)",
+            generated.Text
+        );
+    }
+
+    /// <summary>
+    /// <c>DefaultValueExpression = "new()"</c> 被包成强制转换，目标类型由属性类型决定。
+    /// </summary>
+    /// <remarks>
+    /// 回归：特性命名参数的类型是 <see cref="object"/>，<c>new()</c> 会被推断成
+    /// <see cref="object"/> 而不是属性类型，WPF 注册时抛「默认值类型与属性类型不匹配」。
+    /// 包上转换后目标类型由属性类型决定，<c>new()</c> 与集合表达式都能正确推断。
+    /// </remarks>
+    [Fact]
+    public void TargetTypedDefaultValueExpression_IsCastToPropertyType()
+    {
+        var (sources, errors) = GeneratorTestHost.RunAndCompile(
+            new DependencyPropertyGenerator(),
+            Stubs
+                + """
+
+                namespace Demo
+                {
+                    [Len.Abp.Wpf.DependencyProperty<System.Collections.Generic.List<int>>("Items", DefaultValueExpression = "new()")]
+                    public partial class MyControl : System.Windows.DependencyObject { }
+                }
+                """
+        );
+
+        var generated = Assert.Single(sources);
+
+        Assert.Empty(errors);
+        Assert.Contains(
+            "defaultValue: (global::System.Collections.Generic.List<int>)(new())",
+            generated.Text
+        );
     }
 }

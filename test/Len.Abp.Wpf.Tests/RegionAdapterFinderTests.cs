@@ -5,8 +5,6 @@ using System.Windows.Controls;
 using Volo.Abp.DependencyInjection;
 using Xunit;
 
-// 附加属性 Len.Abp.Wpf.Navigation.Region 与区域实现 Len.Abp.Wpf.Navigation.Regions.Region 同名。
-using RegionImpl = Len.Abp.Wpf.Navigation.Regions.Region;
 
 namespace Len.Abp.Wpf.Tests;
 
@@ -52,6 +50,31 @@ public class RegionAdapterFinderTests
         Assert.Contains("未找到控件类型", ex.Message);
     }
 
+    /// <summary>
+    /// TabControl 同时匹配自身与 ItemsControl 的适配器时，优先返回自身的。
+    /// </summary>
+    /// <remarks>
+    /// <see cref="TabControl"/> 继承自 <see cref="ItemsControl"/>，两者都注册了适配器。
+    /// 查找必须从具体类型开始，否则 TabControl 会被当成普通 ItemsControl 处理，
+    /// 失去选项卡语义。
+    /// </remarks>
+    [Fact]
+    public void FindByControlType_TabControl_PrefersTabControlAdapter()
+    {
+        var itemsAdapter = new StubAdapter();
+        var tabAdapter = new StubAdapter();
+        var finder = CreateFinder(
+            new Dictionary<Type, IRegionAdapter>
+            {
+                [typeof(ItemsControl)] = itemsAdapter,
+                [typeof(TabControl)] = tabAdapter,
+            }
+        );
+
+        Assert.Same(tabAdapter, finder.FindByControlType(typeof(TabControl)));
+        Assert.Same(itemsAdapter, finder.FindByControlType(typeof(ItemsControl)));
+    }
+
     private static RegionAdapterFinder CreateFinder(Dictionary<Type, IRegionAdapter> adapters)
     {
         var services = new ServiceCollection();
@@ -71,6 +94,6 @@ public class RegionAdapterFinderTests
     private sealed class StubAdapter : IRegionAdapter
     {
         public IRegion Initialize(object regionTarget, string regionName, IView ownerView) =>
-            new RegionImpl(regionName, ownerView.ViewName, ownerView);
+            new Region(regionName, ownerView.ViewName, ownerView);
     }
 }

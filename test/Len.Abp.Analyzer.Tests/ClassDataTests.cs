@@ -85,7 +85,7 @@ public class ClassDataTests
     [Fact]
     public void WrapInTypeDeclarations_TopLevelClass_WrapsBody()
     {
-        var result = Create(Name: "Sample").WrapInTypeDeclarations("void M() { }");
+        var result = Create(DeclarationName: "Sample").WrapInTypeDeclarations("void M() { }");
 
         Assert.Equal(
             """
@@ -105,7 +105,7 @@ public class ClassDataTests
     [Fact]
     public void WrapInTypeDeclarations_Record_UsesRecordKeyword()
     {
-        var result = Create(Name: "Sample", IsRecord: true).WrapInTypeDeclarations("int X;");
+        var result = Create(DeclarationName: "Sample", IsRecord: true).WrapInTypeDeclarations("int X;");
 
         Assert.Contains("partial record Sample", result);
     }
@@ -119,7 +119,7 @@ public class ClassDataTests
     [Fact]
     public void WrapInTypeDeclarations_StaticClass_UsesStaticPartialOrder()
     {
-        var result = Create(Name: "Sample", IsStatic: true).WrapInTypeDeclarations("int X;");
+        var result = Create(DeclarationName: "Sample", IsStatic: true).WrapInTypeDeclarations("int X;");
 
         Assert.Contains("static partial class Sample", result);
         Assert.DoesNotContain("partial static class", result);
@@ -131,7 +131,7 @@ public class ClassDataTests
     [Fact]
     public void WrapInTypeDeclarations_SelfDeclaration_PreservesContinuationIndent()
     {
-        var result = Create(Name: "Sample").WrapInTypeDeclarations(
+        var result = Create(DeclarationName: "Sample").WrapInTypeDeclarations(
             "int X;",
             "partial class Sample :\n    global::System.IDisposable"
         );
@@ -155,7 +155,7 @@ public class ClassDataTests
     [Fact]
     public void WrapInTypeDeclarations_NestedTypes_ExpandsEachLevel()
     {
-        var result = Create(Name: "Inner", ContainingTypes: ["partial class Outer", "partial struct Middle"])
+        var result = Create(DeclarationName: "Inner", ContainingTypes: ["partial class Outer", "partial struct Middle"])
             .WrapInTypeDeclarations("int X;");
 
         Assert.Equal(
@@ -182,7 +182,7 @@ public class ClassDataTests
     [Fact]
     public void WrapInTypeDeclarations_BodyWithLeadingAndTrailingBlankLines_TrimsThem()
     {
-        var result = Create(Name: "Sample").WrapInTypeDeclarations("\n\nint A;\n\nint B;\n\n");
+        var result = Create(DeclarationName: "Sample").WrapInTypeDeclarations("\n\nint A;\n\nint B;\n\n");
 
         Assert.Equal(
             """
@@ -204,7 +204,7 @@ public class ClassDataTests
     [Fact]
     public void WrapInTypeDeclarations_BodyWithCommonIndent_StripsIndent()
     {
-        var result = Create(Name: "Sample").WrapInTypeDeclarations("    int A;\n        int B;");
+        var result = Create(DeclarationName: "Sample").WrapInTypeDeclarations("    int A;\n        int B;");
 
         Assert.Equal(
             """
@@ -225,7 +225,7 @@ public class ClassDataTests
     [Fact]
     public void WrapInTypeDeclarations_LineShorterThanCommonIndent_BecomesBlank()
     {
-        var result = Create(Name: "Sample").WrapInTypeDeclarations("    int A;\n  \n    int B;");
+        var result = Create(DeclarationName: "Sample").WrapInTypeDeclarations("    int A;\n  \n    int B;");
 
         Assert.Equal(
             """
@@ -247,7 +247,7 @@ public class ClassDataTests
     [Fact]
     public void WrapInTypeDeclarations_DeclarationWithBlankLine_SkipsIt()
     {
-        var result = Create(Name: "Sample").WrapInTypeDeclarations("int X;", "partial class Sample\n\n");
+        var result = Create(DeclarationName: "Sample").WrapInTypeDeclarations("int X;", "partial class Sample\n\n");
 
         Assert.Equal(
             """
@@ -261,13 +261,104 @@ public class ClassDataTests
         );
     }
 
+    /// <summary>
+    /// 无基类型时只生成类型声明本身。
+    /// </summary>
+    [Fact]
+    public void SelfDeclaration_WithoutBaseTypes_HasNoColon()
+    {
+        Assert.Equal("partial class Sample", Create(DeclarationName: "Sample").SelfDeclaration());
+    }
+
+    /// <summary>
+    /// 声明用未闭合的类型参数，而 <see cref="ClassData.Type"/> 保持闭合。
+    /// </summary>
+    /// <remarks>
+    /// 回归：这两个字段原先共用一个 <c>Name</c>，语义在"声明名"与"显示名"之间摇摆。
+    /// 分部声明必须用未闭合参数（CS1001/CS0264），<c>typeof()</c> 与特性参数必须用闭合实参
+    /// （CS0416）。任何一处混用都会在泛型类型上产出无法编译的代码。
+    /// </remarks>
+    [Fact]
+    public void DeclarationNameAndType_HaveDifferentSemantics()
+    {
+        var data = Create(
+            DeclarationName: "PageViewModel<T>",
+            SimpleName: "PageViewModel",
+            FullName: "Demo.PageViewModel<T>",
+            Type: "global::Demo.PageViewModel<int>"
+        );
+
+        Assert.Contains("partial class PageViewModel<T>", data.SelfDeclaration());
+        Assert.Equal("global::Demo.PageViewModel<int>", data.Type);
+        Assert.DoesNotContain("<int>", data.SelfDeclaration());
+    }
+
+    /// <summary>
+    /// 有基类型时按顺序拼接，用逗号分隔。
+    /// </summary>
+    [Fact]
+    public void SelfDeclaration_WithBaseTypes_JoinsByComma()
+    {
+        var result = Create(DeclarationName: "Sample").SelfDeclaration(["global::System.IDisposable", "global::System.IAsyncDisposable"]);
+
+        Assert.Equal(
+            "partial class Sample : global::System.IDisposable, global::System.IAsyncDisposable",
+            result
+        );
+    }
+
+    /// <summary>
+    /// record 类型必须保留 <c>record</c> 关键字，否则与用户声明冲突（CS0261）。
+    /// </summary>
+    [Fact]
+    public void SelfDeclaration_Record_UsesRecordKeyword()
+    {
+        Assert.StartsWith("partial record Sample", Create(DeclarationName: "Sample", IsRecord: true).SelfDeclaration());
+    }
+
+    /// <summary>
+    /// 静态类型的修饰符顺序必须是 <c>static partial</c>，写成 <c>partial static</c> 会报 CS0267。
+    /// </summary>
+    [Fact]
+    public void SelfDeclaration_StaticClass_UsesStaticPartialOrder()
+    {
+        Assert.Equal("static partial class Sample", Create(DeclarationName: "Sample", IsStatic: true).SelfDeclaration());
+    }
+
+    /// <summary>
+    /// 特性紧贴最内层类型声明，嵌套时按当前层级缩进。
+    /// </summary>
+    /// <remarks>
+    /// 特性拼在整个块之前会被编译器绑定到外层类型，嵌套视图的注册特性会因此挂错目标。
+    /// </remarks>
+    [Fact]
+    public void WrapInTypeDeclarations_LeadingAttributes_AttachToInnermostType()
+    {
+        var result = Create(DeclarationName: "Inner", ContainingTypes: ["partial class Outer"])
+            .WrapInTypeDeclarations("int X;", leadingAttributes: "[global::System.Obsolete]\n");
+
+        Assert.Equal(
+            """
+            partial class Outer
+            {
+                [global::System.Obsolete]
+                partial class Inner
+                {
+                    int X;
+                }
+            }
+
+            """.ReplaceLineEndings("\n"),
+            result
+        );
+    }
+
     private static ClassData Create(
         string Namespace = "Demo",
-        string Name = "Sample",
+        string DeclarationName = "Sample",
         string SimpleName = "Sample",
         string FullName = "Demo.Sample",
         string Type = "global::Demo.Sample",
-        IReadOnlyList<string>? Methods = null,
         IReadOnlyList<string>? MethodNames = null,
         IReadOnlyList<string>? ContainingTypes = null,
         bool IsRecord = false,
@@ -277,11 +368,10 @@ public class ClassDataTests
     ) =>
         new(
             Namespace,
-            Name,
+            DeclarationName,
             SimpleName,
             FullName,
             Type,
-            Methods ?? [],
             MethodNames ?? [],
             ContainingTypes ?? [],
             IsRecord,
