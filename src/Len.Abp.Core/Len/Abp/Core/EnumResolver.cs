@@ -9,31 +9,34 @@ namespace Len.Abp.Core;
 /// </summary>
 /// <typeparam name="TEnum">枚举类型。</typeparam>
 /// <remarks>
+/// <para>
 /// 名称来自 <see cref="IAbpEnumLocalizer"/>：它会依次尝试
 /// <c>Enum:{类型名}.{成员名}</c>、<c>{类型名}.{成员名}</c> 与 <c>{成员名}</c> 等键，
 /// 找不到本地化资源时回退到成员名本身，因此无需配置资源即可直接使用。
+/// </para>
+/// <para>
+/// 约束是 <c>struct, Enum</c> 而不是仅 <c>Enum</c>：只有前者能使用
+/// <see cref="Enum.GetValues{TEnum}"/> 这类泛型重载。仅 <c>Enum</c> 约束时只能调用
+/// <see cref="Enum.GetValues(Type)"/>，返回 <see cref="Array"/> 与 <see cref="object"/>，
+/// 遍历时每个元素都要装箱。
+/// </para>
 /// </remarks>
 /// <param name="enumLocalizer">ABP 枚举本地化器。</param>
 public class EnumResolver<TEnum>(IAbpEnumLocalizer enumLocalizer) : IEnumResolver<TEnum>
-    where TEnum : Enum
+    where TEnum : struct, Enum
 {
     private readonly IAbpEnumLocalizer _enumLocalizer = enumLocalizer;
 
     /// <inheritdoc/>
-    public NameValue<TEnum> GetNameValue(TEnum value)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-
-        return new NameValue<TEnum>(GetLocalizedName(value), value);
-    }
+    public NameValue<TEnum> GetNameValue(TEnum value) =>
+        new(GetLocalizedName(value), value);
 
     /// <inheritdoc/>
     public IEnumerable<NameValue<TEnum>> GetNameValues()
     {
         return
         [
-            .. Enum.GetValues(typeof(TEnum))
-                .Cast<TEnum>()
+            .. Enum.GetValues<TEnum>()
                 .Select(value => new NameValue<TEnum>(GetLocalizedName(value), value)),
         ];
     }

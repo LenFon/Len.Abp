@@ -1,0 +1,11 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--  每个控件的默认样式独立成文件，这里统一合并，由模块类加载本文件。  -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/WpfApp.Controls;component/Themes/RatingControl.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/WpfApp.Controls;component/Themes/TagInput.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+</ResourceDictionary>

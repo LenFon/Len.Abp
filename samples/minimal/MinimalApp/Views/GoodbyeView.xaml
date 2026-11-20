@@ -1,0 +1,18 @@
+<UserControl
+    x:Class="MinimalApp.Views.GoodbyeView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewmodels="clr-namespace:MinimalApp.ViewModels"
+    d:DataContext="{d:DesignInstance Type=viewmodels:GoodbyeViewModel}"
+    d:DesignHeight="300"
+    d:DesignWidth="500"
+    mc:Ignorable="d">
+    <TextBlock
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        FontSize="28"
+        FontWeight="Bold"
+        Text="{Binding Message}" />
+</UserControl>

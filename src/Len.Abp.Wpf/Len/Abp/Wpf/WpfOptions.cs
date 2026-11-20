@@ -18,4 +18,9 @@ public class WpfOptions
     /// 是否只允许运行单个应用实例。
     /// </summary>
     public bool SingleInstance { get; set; }
+
+    /// <summary>
+    /// UI 线程未处理异常是否标记为已处理。默认 false，保持 WPF 原有崩溃行为。
+    /// </summary>
+    public bool HandleUnhandledExceptions { get; set; }
 }

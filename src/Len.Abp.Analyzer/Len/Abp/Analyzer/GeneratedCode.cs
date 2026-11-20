@@ -71,6 +71,19 @@ public static class GeneratedCode
     }
 
     /// <summary>
+    /// 生成成员上标注来源的固定特性组。
+    /// </summary>
+    /// <param name="generatorName">生成器名称，写入 <c>GeneratedCode</c> 特性。</param>
+    /// <param name="version">生成器版本，写入 <c>GeneratedCode</c> 特性。</param>
+    /// <returns>两行特性，可直接作为 <see cref="Lines"/> 的一个元素传入。</returns>
+    /// <remarks>
+    /// 这两个特性总是成对出现且顺序固定，集中在一处避免各生成器写出不同的特性名拼写。
+    /// 返回值不带结尾换行，便于嵌入 <see cref="Lines"/> 的参数列表。
+    /// </remarks>
+    public static string GeneratedMemberAttributes(string generatorName, string version) =>
+        $"[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]\n[global::System.CodeDom.Compiler.GeneratedCode(\"{generatorName}\", \"{version}\")]";
+
+    /// <summary>
     /// 把多行片段接在 <paramref name="prefix"/> 之后，续行按指定宽度缩进。
     /// </summary>
     /// <param name="prefix">片段首行之前的内容，包含缩进。</param>
@@ -110,6 +123,11 @@ public static class GeneratedCode
         return builder.ToString();
     }
 
-    private static string[] SplitLines(string text) =>
+    /// <summary>
+    /// 把文本按行拆分，统一换行符。
+    /// </summary>
+    /// <param name="text">待拆分的文本。</param>
+    /// <returns>按 <c>\n</c> 分隔的行。</returns>
+    internal static string[] SplitLines(string text) =>
         text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
 }

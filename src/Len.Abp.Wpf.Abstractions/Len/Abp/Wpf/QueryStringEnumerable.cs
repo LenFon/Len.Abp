@@ -3,16 +3,13 @@
 /// <summary>
 /// 可从 URI 查询字符串中提供名称/值对的可枚举对象。
 /// </summary>
-/// <remarks>
-/// 构造 <see cref="QueryStringEnumerable"/> 的实例。
-/// </remarks>
 /// <param name="queryString">查询字符串。</param>
 internal readonly struct QueryStringEnumerable(ReadOnlyMemory<char> queryString)
 {
     private readonly ReadOnlyMemory<char> _queryString = queryString;
 
     /// <summary>
-    /// 构造 <see cref="QueryStringEnumerable"/> 的实例。
+    /// 使用字符串初始化查询字符串枚举对象。
     /// </summary>
     /// <param name="queryString">查询字符串。</param>
     public QueryStringEnumerable(string? queryString)
@@ -64,18 +61,35 @@ internal readonly struct QueryStringEnumerable(ReadOnlyMemory<char> queryString)
         /// <returns>表示解码后值的字符。</returns>
         public ReadOnlyMemory<char> DecodeValue() => Decode(EncodedValue);
 
+        /// <summary>
+        /// 解码百分号转义。
+        /// </summary>
+        /// <param name="chars">编码后的字符。</param>
+        /// <returns>解码后的字符。</returns>
+        /// <remarks>
+        /// <para>
+        /// <b>不把 <c>+</c> 解码成空格。</b>那是 HTML 表单（<c>application/x-www-form-urlencoded</c>）
+        /// 的规则，导航 URI 是普通 URI：<c>?token=abc+def</c> 里的 <c>+</c> 是字面字符，
+        /// 按表单规则解码会把 base64 令牌之类的值静默改坏。
+        /// </para>
+        /// <para>
+        /// 需要空格时写 <c>%20</c>，与 RFC 3986 一致。
+        /// </para>
+        /// </remarks>
         private static ReadOnlyMemory<char> Decode(ReadOnlyMemory<char> chars)
         {
             ReadOnlySpan<char> source = chars.Span;
-            if (!source.ContainsAny('%', '+'))
+            if (!source.Contains('%'))
             {
                 return chars;
             }
+
             var buffer = new char[source.Length];
-            source.Replace(buffer, '+', ' ');
+            source.CopyTo(buffer);
             if (!Uri.TryUnescapeDataString(buffer, buffer, out var unescapedLength))
             {
-                // 畸形转义序列无法解码时保留原始文本，避免静默变成空字符串。
+                // 只有目标缓冲区不足时才会失败；这里缓冲区与源等长、还原只会缩短，
+                // 因此该分支实际不可达，保留原始文本作为兜底。
                 return chars;
             }
 

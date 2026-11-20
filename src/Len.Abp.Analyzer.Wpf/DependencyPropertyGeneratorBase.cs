@@ -1,210 +1,26 @@
 ﻿using Len.Abp.Analyzer;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.Net;
 
 /// <summary>
 /// 从特性生成 WPF 依赖属性的生成器共享流程。
 /// 派生生成器只提供成员声明和回调体，这两部分在普通属性和附加属性之间不同。
 /// </summary>
-internal abstract class DependencyPropertyGeneratorBase(string id, params HashSet<string> attributeFullyNames)
-    : BasicGenerator<DependencyPropertyGeneratorBase.DependencyPropertyData>(id, attributeFullyNames)
+internal abstract class DependencyPropertyGeneratorBase(params HashSet<string> attributeFullyNames)
+    : InstanceMemberGeneratorBase<DependencyPropertyData>(attributeFullyNames)
 {
-    /// <summary>
-    /// 生成成员上 <c>GeneratedCode</c> 特性所标注的生成器名称。
-    /// </summary>
-    protected abstract string GeneratorName { get; }
+    /// <inheritdoc/>
+    protected override string MemberKindDescription => "依赖属性";
 
     /// <inheritdoc/>
-    protected override string CreateFileName((ClassData Class, DependencyPropertyData Data, string Version) context) =>
-        $"{context.Class.HintName}.{context.Data.Name}.g.cs";
+    protected override string AttachedAttributeName => "AttachedDependencyProperty";
+
+    /// <inheritdoc/>
+    protected override DependencyPropertyData ParseData(ClassContext classContext) =>
+        DependencyPropertyData.Parse(classContext);
 
     /// <inheritdoc/>
     protected override string CreateSourceCode((ClassData Class, DependencyPropertyData Data, string Version) context) =>
         GenerateDependencyProperty(context.Class, context.Data, context.Version);
-
-    /// <inheritdoc/>
-    protected override (ClassData Class, DependencyPropertyData Data, string Version)? PrepareData((ClassContext, string) context)
-    {
-        var (classContext, version) = context;
-        if (classContext.Attributes.FirstOrDefault() is null)
-        {
-            return null;
-        }
-
-        var classData = classContext.ClassSymbol.GetClassData();
-        return (classData, classContext, version);
-    }
-
-    #region CreateDependencyPropertyData
-
-    /// <summary>
-    /// 生成依赖属性所需的全部数据。
-    /// </summary>
-    /// <param name="Name">属性名称。</param>
-    /// <param name="Type">属性的完全限定类型名。</param>
-    /// <param name="ShortType">属性的简短类型名。</param>
-    /// <param name="IsValueType">属性类型是否为值类型。</param>
-    /// <param name="IsSpecialType">属性类型是否为特殊类型。</param>
-    /// <param name="DefaultValue">默认值表达式，已保证与属性类型一致。</param>
-    /// <param name="DefaultValueDocumentation">默认值的文档表达式。</param>
-    /// <param name="IsReadOnly">是否为只读属性。</param>
-    /// <param name="Category">属性的分类。</param>
-    /// <param name="Description">属性的描述。</param>
-    /// <param name="Flags">元数据标志。</param>
-    /// <param name="UpdateSourceTrigger">更新源触发器。</param>
-    /// <param name="HasUpdateSourceTrigger">是否显式指定了更新源触发器。</param>
-    public readonly record struct DependencyPropertyData(
-        string Name,
-        string Type,
-        string ShortType,
-        bool IsValueType,
-        bool IsSpecialType,
-        string? DefaultValue,
-        string? DefaultValueDocumentation,
-        bool IsReadOnly,
-        string? Category,
-        string? Description,
-        string? Flags,
-        string UpdateSourceTrigger,
-        bool HasUpdateSourceTrigger
-    )
-    {
-        /// <summary>
-        /// 从类上下文中的特性数据构造依赖属性数据。
-        /// </summary>
-        /// <param name="context">类上下文。</param>
-        public static implicit operator DependencyPropertyData(ClassContext context)
-        {
-            var attribute = context.Attributes.First();
-            var attributeSyntax = attribute.GetSyntax();
-            var name = attribute.ConstructorArguments.ElementAtOrDefault(0).Value?.ToString() ?? string.Empty;
-            var typeSymbol =
-                attribute.GetGenericTypeArgument(0) ?? attribute.ConstructorArguments.ElementAtOrDefault(1).Value as ITypeSymbol;
-            var type = typeSymbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? string.Empty;
-            var shortType = typeSymbol?.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat) ?? string.Empty;
-            var isValueType = typeSymbol?.IsValueType ?? true;
-            var isSpecialType = typeSymbol.IsSpecialType() ?? false;
-            var defaultValueExpression = attribute.GetNamedArgument("DefaultValueExpression");
-            var defaultValueConstant = attribute.GetNamedArgument("DefaultValue");
-            var defaultValue = !defaultValueExpression.IsNull
-                ? defaultValueExpression.Value?.ToString()
-                : CreateDefaultValueExpression(defaultValueConstant, typeSymbol);
-            var defaultValueDocumentation =
-                defaultValueExpression.Value?.ToString()
-                ?? attributeSyntax?.GetNamedArgumentExpression("DefaultValue");
-            var isReadOnly = attribute.GetNamedArgument("IsReadOnly").To<bool>();
-            var description = attribute.GetNamedArgument("Description").Value?.ToString();
-            var category = attribute.GetNamedArgument("Category").Value?.ToString();
-            var temp = attribute.GetNamedArgument("Flags");
-            string? flags = null;
-            if (!temp.IsNull)
-            {
-                var arr = temp.ToCSharpString()
-                    .Split(['|'], StringSplitOptions.RemoveEmptyEntries)
-                    .Select(s => s.Trim())
-                    .Where(w => w != "System.Windows.FrameworkPropertyMetadataOptions.None")
-                    .Select(s => $"global::{s}")
-                    .ToArray();
-
-                // 显式写出 Flags = None 时过滤后为空，此时应回退到普通 PropertyMetadata，
-                // 否则会生成 `flags: ,` 这样的非法代码。
-                if (arr.Length > 0)
-                {
-                    flags = string.Join(" | ", arr);
-                }
-            }
-
-            temp = attribute.GetNamedArgument("UpdateSourceTrigger");
-            var hasUpdateSourceTrigger = !temp.IsNull;
-            var updateSourceTrigger = hasUpdateSourceTrigger
-                ? $"global::{temp.ToCSharpString()}"
-                : "global::System.Windows.Data.UpdateSourceTrigger.Default";
-
-            return new DependencyPropertyData(
-                name,
-                type,
-                shortType,
-                isValueType,
-                isSpecialType,
-                defaultValue,
-                defaultValueDocumentation,
-                isReadOnly,
-                category,
-                description,
-                flags,
-                updateSourceTrigger,
-                hasUpdateSourceTrigger
-            );
-        }
-
-        /// <summary>
-        /// 生成与属性类型精确匹配的默认值表达式。
-        /// </summary>
-        /// <param name="constant">特性中的默认值常量。</param>
-        /// <param name="typeSymbol">属性类型符号。</param>
-        /// <returns>默认值表达式；未指定默认值时返回 null。</returns>
-        /// <remarks>
-        /// 不能直接用 <c>Value.ToString()</c>：枚举会退化成数字，<c>float</c>/<c>decimal</c> 会丢掉后缀，
-        /// 生成的值类型与属性类型不一致时，WPF 在注册依赖属性时会抛
-        /// “默认值类型与属性类型不匹配”。这里统一按目标类型生成显式表达式。
-        /// </remarks>
-        private static string? CreateDefaultValueExpression(TypedConstant constant, ITypeSymbol? typeSymbol)
-        {
-            if (constant.IsNull)
-            {
-                return null;
-            }
-
-            var targetType = typeSymbol is null
-                ? null
-                : typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
-                    ? ((INamedTypeSymbol)typeSymbol).TypeArguments[0]
-                    : typeSymbol;
-
-            // 枚举：保留类型名，生成 Mode.B 而不是 1。
-            if (constant.Kind == TypedConstantKind.Enum)
-            {
-                var enumType = constant.Type?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                var member = constant.ToCSharpString();
-
-                // ToCSharpString 可能给出 "Demo.Mode.B" 或 "1"（未命名值），前者直接使用。
-                if (enumType is not null && !int.TryParse(member, out _))
-                {
-                    return $"({enumType})({member})";
-                }
-
-                return enumType is null ? member : $"({enumType})({constant.Value})";
-            }
-
-            if (constant.Kind != TypedConstantKind.Primitive || targetType is null)
-            {
-                return constant.ToCSharpString();
-            }
-
-            var fullyQualifiedType = targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            var literal = constant.ToCSharpString();
-
-            // 字面量必须与目标类型精确匹配，否则 WPF 注册依赖属性时会抛“默认值类型与属性类型不匹配”。
-            // float/decimal 的字面量不带后缀，窄整型会被推断为 int，long/ulong 需要显式后缀。
-            return targetType.SpecialType switch
-            {
-                SpecialType.System_Single => $"({fullyQualifiedType})({literal})",
-                SpecialType.System_Decimal => $"({fullyQualifiedType})({literal})",
-                SpecialType.System_Byte or SpecialType.System_SByte
-                    or SpecialType.System_Int16 or SpecialType.System_UInt16
-                    or SpecialType.System_Char => $"({fullyQualifiedType})({literal})",
-                SpecialType.System_Int64 => $"{literal}L",
-                SpecialType.System_UInt64 => $"{literal}UL",
-                _ => literal,
-            };
-        }
-    }
-
-    #endregion CreateDependencyPropertyData
-
-    #region Generate Code
 
     private string GenerateDependencyProperty(ClassData @class, DependencyPropertyData property, string version)
     {
@@ -232,20 +48,54 @@ internal abstract class DependencyPropertyGeneratorBase(string id, params HashSe
     /// <param name="property">依赖属性数据。</param>
     /// <returns>默认值表达式。</returns>
     /// <remarks>
+    /// <para>
     /// 元数据必须使用 <see cref="DependencyPropertyData.DefaultValue"/>：它已按属性类型生成显式表达式。
     /// <see cref="DependencyPropertyData.DefaultValueDocumentation"/> 只是源码原文，用于 XML 注释，
     /// 直接放进元数据会丢失类型信息（例如 <c>float</c> 缺少后缀、枚举退化成数字）。
+    /// </para>
+    /// <para>
+    /// 空白按"未指定"处理：<c>DefaultValueExpression = ""</c> 若原样输出会生成
+    /// <c>defaultValue: ,</c>，编译报 CS0839。
+    /// </para>
     /// </remarks>
     protected static string GenerateDefaultValue(DependencyPropertyData property) =>
-        property.DefaultValue ?? $"default({property.Type})";
+        // 用模式匹配而不是 string.IsNullOrWhiteSpace：netstandard2.0 的 BCL 没有可空标注，
+        // 编译器不会据此收窄，会报 CS8603。
+        property.DefaultValue is { Length: > 0 } value && !string.IsNullOrWhiteSpace(value)
+            ? value
+            : $"default({property.Type})";
+
+    /// <summary>
+    /// 生成 XML 文档注释中展示的默认值文本。
+    /// </summary>
+    /// <param name="property">依赖属性数据。</param>
+    /// <returns>已做 XML 转义的默认值文本。</returns>
+    /// <remarks>
+    /// <para>
+    /// 与 <see cref="GenerateDefaultValue"/> 的区别：本方法的结果只进注释，必须转义。
+    /// 使用者写的表达式常含泛型尖括号（如 <c>new List&lt;int&gt;()</c>），
+    /// 直接拼进 <c>&lt;summary&gt;</c> 会让 XML 非法（CS1570），
+    /// 开启 <c>TreatWarningsAsErrors</c> 时直接阻断构建。
+    /// </para>
+    /// <para>
+    /// 优先展示源码原文（<see cref="DependencyPropertyData.DefaultValueDocumentation"/>），
+    /// 它比生成后的完全限定名更接近使用者写的内容；没有时回退到生成表达式。
+    /// </para>
+    /// </remarks>
+    protected static string GenerateDefaultValueDocumentation(DependencyPropertyData property) =>
+        // 用模式匹配而不是 string.IsNullOrEmpty：netstandard2.0 的 BCL 没有可空标注，
+        // 编译器不会据此收窄，会报 CS8604。
+        (property.DefaultValueDocumentation is { Length: > 0 } text ? text : GenerateDefaultValue(property))
+            .ToXmlCommentText();
 
     private string GenerateDependencyPropertyDefinition(ClassData @class, DependencyPropertyData property, string version)
     {
-        var defaultValue = !string.IsNullOrEmpty(property.DefaultValueDocumentation)
-            ? property.DefaultValueDocumentation
-            : $"default({WebUtility.HtmlEncode(property.ShortType)})";
-        // 静态类不能包含保护成员（CS1057），只读属性的键字段在静态宿主上退化为 public。
-        var identifiers = property.IsReadOnly ? (@class.IsStatic ? "public" : "protected internal") : "public";
+        // 只用于 XML 文档注释，因此必须转义（见 GenerateDefaultValueDocumentation）。
+        // 元数据用的表达式走 GenerateDefaultValue，那里不能转义——那是真实代码。
+        var defaultValue = GenerateDefaultValueDocumentation(property);
+        // 静态类不能包含保护成员（CS1057），密封类不能声明新的保护成员（CS0628）。
+        // 两种宿主上只读属性的键字段都退化为 public。
+        var identifiers = property.IsReadOnly ? (@class.IsStatic || @class.IsSealed ? "public" : "protected internal") : "public";
         var readOnly = property.IsReadOnly ? "ReadOnly" : string.Empty;
         var key = property.IsReadOnly ? "Key" : string.Empty;
         var definition = !property.IsReadOnly
@@ -292,16 +142,15 @@ internal abstract class DependencyPropertyGeneratorBase(string id, params HashSe
             $"/// 标识 <see cref=\"{property.Name}\"/> 依赖属性。<br/>",
             $"/// 默认值：{defaultValue}",
             "/// </summary>",
-            "[global::System.Runtime.CompilerServices.CompilerGeneratedAttribute]",
-            $"[global::System.CodeDom.Compiler.GeneratedCode(\"{GeneratorName}\", \"{version}\")]"
+            GeneratedCode.GeneratedMemberAttributes(GeneratorName, version)
         );
 
         var declaration = GeneratedCode.Lines(
-            $"{identifiers} static readonly global::System.Windows.DependencyProperty{key} {property.Name}Property{key} = global::System.Windows.DependencyProperty.Register{readOnly}(",
+            $"{identifiers} static readonly global::System.Windows.DependencyProperty{key} {property.Name}Property{key} = global::System.Windows.DependencyProperty.{RegisterMethod}{readOnly}(",
             $"    name: \"{property.Name}\",",
             $"    propertyType: typeof({property.Type}),",
             $"    ownerType: typeof({@class.Type}),",
-            GeneratedCode.Inline("    typeMetadata: ", typeMetadata, 4) + ",",
+            GeneratedCode.Inline($"    {MetadataParameterName}: ", typeMetadata, 4) + ",",
             GeneratedCode.Inline("    validateValueCallback: ", GenerateValidateValueCallback(@class, property), 4),
             ");"
         );
@@ -309,13 +158,41 @@ internal abstract class DependencyPropertyGeneratorBase(string id, params HashSe
         return GeneratedCode.Join(documentation + declaration, definition);
     }
 
+    /// <summary>
+    /// 获取注册依赖属性使用的方法名（不含 <c>ReadOnly</c> 后缀）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 实例属性用 <c>Register</c>，附加属性必须用 <c>RegisterAttached</c>：
+    /// 后者允许 <c>ownerType</c> 是静态类，且 XAML 才能把属性识别为附加属性。
+    /// </para>
+    /// <para>
+    /// 早期实现让附加属性也走 <c>Register</c>，静态类宿主会在类型初始化时抛
+    /// 「类型必须派生自 DependencyObject」。改用 <c>RegisterAttached</c> 后
+    /// 静态类、普通类、XAML 用法都正常，回调也照常触发。
+    /// </para>
+    /// </remarks>
+    protected abstract string RegisterMethod { get; }
+
+    /// <summary>
+    /// 获取元数据参数在注册方法签名里的名字。
+    /// </summary>
+    /// <remarks>
+    /// <b>两组 API 的参数名不同</b>：<c>Register</c> / <c>RegisterReadOnly</c> 叫
+    /// <c>typeMetadata</c>，<c>RegisterAttached</c> / <c>RegisterAttachedReadOnly</c> 叫
+    /// <c>defaultMetadata</c>。生成代码用具名实参，名字写错会报 CS1739。
+    /// </remarks>
+    private string MetadataParameterName =>
+        RegisterMethod == "RegisterAttached" ? "defaultMetadata" : "typeMetadata";
+
     private static string GenerateValidateValueCallback(ClassData @class, DependencyPropertyData property)
     {
         var methodName = $"Is{property.Name}Valid";
-        var isExist = @class.HasMethod(methodName);
 
-        if (!isExist)
+        if (!@class.HasMethod(methodName))
+        {
             return "null";
+        }
 
         return GeneratedCode.Lines(
             "static value =>",
@@ -333,7 +210,37 @@ internal abstract class DependencyPropertyGeneratorBase(string id, params HashSe
     /// <param name="class">目标类数据。</param>
     /// <param name="property">依赖属性数据。</param>
     /// <returns>强制值回调表达式；不存在对应分部方法时返回 <c>null</c>。</returns>
-    protected abstract string GenerateCoerceValueCallback(ClassData @class, DependencyPropertyData property);
+    /// <remarks>
+    /// <para>
+    /// 普通属性与附加属性的差异只在调用钩子时的实参：前者传值，后者还要传 <c>sender</c>。
+    /// </para>
+    /// <para>
+    /// <b>引用类型必须用 <c>default!</c>。</b>生成文件开了 <c>#nullable enable</c>，
+    /// 而 <c>{Type} result = default;</c> 对引用类型会报 CS8600（把 null 转成不可空类型）
+    /// 与 CS8601（可能的 null 赋值）。不能改成 <c>{Type}? result</c>：
+    /// 分部方法的参数是 <c>ref {Type}</c>，可空标注不匹配会报 CS8620。
+    /// </para>
+    /// </remarks>
+    protected string GenerateCoerceValueCallback(ClassData @class, DependencyPropertyData property)
+    {
+        var methodName = $"Coerce{property.Name}";
+
+        if (!@class.HasMethod(methodName))
+        {
+            return "null";
+        }
+
+        var initializer = property.IsReferenceType ? "default!" : "default";
+
+        return GeneratedCode.Lines(
+            "static (s, value) =>",
+            "{",
+            $"    {property.Type} result = {initializer};",
+            $"    {methodName}({CoerceArguments(property)}, ref result);",
+            "    return result;",
+            "}"
+        );
+    }
 
     /// <summary>
     /// 生成属性变更回调的委托表达式。
@@ -341,7 +248,55 @@ internal abstract class DependencyPropertyGeneratorBase(string id, params HashSe
     /// <param name="class">目标类数据。</param>
     /// <param name="property">依赖属性数据。</param>
     /// <returns>属性变更回调表达式；不存在对应分部方法时返回 <c>null</c>。</returns>
-    protected abstract string GeneratePropertyChangedCallback(ClassData @class, DependencyPropertyData property);
+    /// <remarks>
+    /// 普通属性通过 <c>s is not 类型</c> 收窄 sender 后调用实例方法；
+    /// 附加属性的钩子是静态方法，直接传 <c>s</c>。
+    /// </remarks>
+    protected string GeneratePropertyChangedCallback(ClassData @class, DependencyPropertyData property)
+    {
+        var methodName = $"On{property.Name}Changed";
 
-    #endregion Generate Code
+        if (!@class.HasMethod(methodName))
+        {
+            return "null";
+        }
+
+        var guard = PropertyChangedGuard(@class);
+
+        return GeneratedCode.Lines(
+            "static (s, e) =>",
+            "{",
+            guard,
+            guard is null ? null : string.Empty,
+            $"    {PropertyChangedInvocation(@class, property, methodName)}",
+            "}"
+        );
+    }
+
+    /// <summary>
+    /// 生成强制值回调调用钩子时的实参列表。
+    /// </summary>
+    /// <param name="property">依赖属性数据。</param>
+    /// <returns>实参列表。</returns>
+    protected abstract string CoerceArguments(DependencyPropertyData property);
+
+    /// <summary>
+    /// 生成属性变更回调中收窄 <c>sender</c> 的守卫语句行。
+    /// </summary>
+    /// <param name="class">目标类数据。</param>
+    /// <returns>守卫语句；不需要守卫时返回 <c>null</c>。</returns>
+    protected abstract string? PropertyChangedGuard(ClassData @class);
+
+    /// <summary>
+    /// 生成属性变更回调中调用钩子的完整语句。
+    /// </summary>
+    /// <param name="class">目标类数据。</param>
+    /// <param name="property">依赖属性数据。</param>
+    /// <param name="methodName">钩子方法名。</param>
+    /// <returns>调用语句，例如 <c>control.OnTitleChanged(oldValue, newValue);</c>。</returns>
+    protected abstract string PropertyChangedInvocation(
+        ClassData @class,
+        DependencyPropertyData property,
+        string methodName
+    );
 }

@@ -3,33 +3,43 @@
 namespace Len.Abp.Wpf;
 
 /// <summary>
-/// 此 API 仅用于支撑基础设施，不应在业务代码中直接使用。
-/// 该 API 可能在未来版本中变更或移除。
+/// 把查询字符串的重复键累积成多值集合，供 <see cref="QueryHelpers.ParseNullableQuery"/> 使用。
 /// </summary>
+/// <remarks>
+/// <para>
+/// 前两个值存在 <see cref="StringValues"/> 里，第三个起改用扩展列表，
+/// 避免常见的一两个值也分配列表。
+/// </para>
+/// <para>
+/// 键比较用 <see cref="StringComparer.OrdinalIgnoreCase"/>：查询串里的
+/// <c>?Name=a&amp;name=b</c> 视为同一个键的多值。注意这与
+/// <see cref="IParameters"/> 的读取语义不同——后者按键名精确匹配，
+/// 因此 <c>?Name=a</c> 之后用 <c>"name"</c> 读不到。
+/// </para>
+/// </remarks>
 internal struct KeyValueAccumulator
 {
     private Dictionary<string, StringValues> _accumulator;
     private Dictionary<string, List<string>> _expandingAccumulator;
 
     /// <summary>
-    /// 此 API 仅用于支撑基础设施，不应在业务代码中直接使用。
-    /// 该 API 可能在未来版本中变更或移除。
+    /// 获取是否已累积任何值。
     /// </summary>
     public readonly bool HasValues => ValueCount > 0;
 
     /// <summary>
-    /// 此 API 仅用于支撑基础设施，不应在业务代码中直接使用。
-    /// 该 API 可能在未来版本中变更或移除。
+    /// 获取已累积的值的总数。
     /// </summary>
     public int ValueCount { get; private set; }
 
     /// <summary>
-    /// 此 API 仅用于支撑基础设施，不应在业务代码中直接使用。
-    /// 该 API 可能在未来版本中变更或移除。
+    /// 追加一个键值对。
     /// </summary>
+    /// <param name="key">参数键。</param>
+    /// <param name="value">参数值。</param>
     public void Append(string key, string value)
     {
-        _accumulator ??= new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase);
+        _accumulator ??= [with(StringComparer.OrdinalIgnoreCase)];
 
         if (_accumulator.TryGetValue(key, out var values))
         {
@@ -49,7 +59,7 @@ internal struct KeyValueAccumulator
                 // 添加计数为零的条目，并把数据移到扩展列表字典
                 _accumulator[key] = default;
 
-                _expandingAccumulator ??= new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+                _expandingAccumulator ??= [with(StringComparer.OrdinalIgnoreCase)];
 
                 // 已有 3 个条目，因此初始容量分配为 8，后续依靠 List 自身的扩容机制
                 var list = new List<string>(8);
@@ -72,9 +82,9 @@ internal struct KeyValueAccumulator
     }
 
     /// <summary>
-    /// 此 API 仅用于支撑基础设施，不应在业务代码中直接使用。
-    /// 该 API 可能在未来版本中变更或移除。
+    /// 把扩展列表中的多值条目合并回主字典并返回结果。
     /// </summary>
+    /// <returns>键到多值集合的映射。</returns>
     public readonly Dictionary<string, StringValues> GetResults()
     {
         if (_expandingAccumulator != null)
@@ -86,6 +96,6 @@ internal struct KeyValueAccumulator
             }
         }
 
-        return _accumulator ?? new Dictionary<string, StringValues>(0, StringComparer.OrdinalIgnoreCase);
+        return _accumulator ?? [with(StringComparer.OrdinalIgnoreCase)];
     }
 }

@@ -31,6 +31,10 @@ internal class RegionBehaviorCollection(IRegion region) : IRegionBehaviorCollect
     public bool ContainsKey(string key) => _behaviors.ContainsKey(key);
 
     /// <inheritdoc/>
+    public T? Find<T>()
+        where T : class => _behaviors.Values.OfType<T>().FirstOrDefault();
+
+    /// <inheritdoc/>
     public IEnumerator<KeyValuePair<string, IRegionBehavior>> GetEnumerator() => _behaviors.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => _behaviors.GetEnumerator();

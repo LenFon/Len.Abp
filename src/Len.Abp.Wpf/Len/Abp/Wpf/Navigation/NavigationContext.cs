@@ -21,10 +21,10 @@ internal class NavigationContext : INavigationContext
     }
 
     /// <inheritdoc/>
-    public IParameters Parameters { get; private set; }
+    public IParameters Parameters { get; }
 
     /// <inheritdoc/>
-    public Uri Uri { get; private set; }
+    public Uri Uri { get; }
 
     private static IParameters ParseQuery(Uri uri) => IParameters.Create(NavigationUri.GetQuery(uri));
 }

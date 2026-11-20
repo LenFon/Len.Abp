@@ -6,30 +6,40 @@ namespace Len.Abp.Analyzer;
 /// 生成器所需的类型信息。
 /// </summary>
 /// <param name="Namespace">类型所在的命名空间；类型位于全局命名空间时为空字符串。</param>
-/// <param name="Name">类型的声明名，含泛型参数（如 <c>MyControl&lt;T&gt;</c>）。</param>
+/// <param name="DeclarationName">
+/// 类型在 <c>partial</c> 声明中使用的名称，泛型类型带<b>未闭合</b>的类型参数
+/// （如 <c>MyControl&lt;T&gt;</c>）。只能用于声明位置。
+/// </param>
 /// <param name="SimpleName">类型的简单名，不含命名空间与泛型参数，用于生成构造函数名。</param>
 /// <param name="FullName">类型的显示名，用于诊断信息与文件名。</param>
 /// <param name="Type">类型的完全限定名，可直接用于生成代码。</param>
-/// <param name="Methods">类型中所有方法的显示名。</param>
 /// <param name="MethodNames">类型中所有方法的简单名称，用于精确匹配分部钩子。</param>
 /// <param name="ContainingTypes">外层类型的声明文本（含 <c>partial class</c> 等关键字），由最外层到最内层排列；顶层类型为空集合。</param>
 /// <param name="IsRecord">类型是否为记录声明，生成 partial 声明时必须保留 <c>record</c> 关键字。</param>
 /// <param name="HasAnyConstructor">类型是否显式声明了实例构造函数（不含编译器合成的构造函数）。</param>
 /// <param name="HasParameterlessConstructor">类型是否显式声明了无参实例构造函数。</param>
 /// <param name="IsStatic">类型是否为静态类，生成 partial 声明时必须保留 <c>static</c> 关键字。</param>
+/// <param name="IsSealed">类型是否为密封类，生成 <c>protected</c> 成员时必须降级为 <c>public</c>。</param>
+/// <remarks>
+/// <b><see cref="DeclarationName"/> 与 <see cref="Type"/> 不能互换</b>：
+/// 前者是未闭合的声明名（<c>PageViewModel&lt;T&gt;</c>），只能出现在 <c>partial</c> 声明里；
+/// 后者是闭合的完全限定名（<c>global::Demo.PageViewModel&lt;int&gt;</c>），
+/// 用于 <c>typeof()</c> 与特性参数。混用会分别得到 CS1001/CS0264 与 CS0416。
+/// 不要合并成一个字段：一个名称无法同时满足两种语义，泛型类型上必然出错。
+/// </remarks>
 public readonly record struct ClassData(
     string Namespace,
-    string Name,
+    string DeclarationName,
     string SimpleName,
     string FullName,
     string Type,
-    IReadOnlyList<string> Methods,
     IReadOnlyList<string> MethodNames,
     IReadOnlyList<string> ContainingTypes,
     bool IsRecord,
     bool HasAnyConstructor,
     bool HasParameterlessConstructor,
-    bool IsStatic = false)
+    bool IsStatic = false,
+    bool IsSealed = false)
 {
     /// <summary>
     /// 命名空间声明；类型位于全局命名空间时返回空字符串。
@@ -41,14 +51,42 @@ public readonly record struct ClassData(
     /// 用于源文件 hint name 的类型名。hint name 不允许包含 <c>&lt;</c> 等字符，
     /// 因此这里去掉泛型参数列表。
     /// </summary>
-    public string HintName => RemoveGenericArguments(FullName);
+    /// <remarks>
+    /// 泛型类型必须保留参数个数（arity）：<c>Page</c> 与 <c>Page&lt;T&gt;</c> 去掉参数列表后
+    /// 都变成 <c>Page</c>，两者会产出同名 hint name，Roslyn 直接抛异常，
+    /// 该类一个源文件都不产出（CS8785）。用反引号加 arity 与元数据名保持一致，
+    /// 非泛型类型保持原样，不改变既有文件名。
+    /// </remarks>
+    public string HintName => RemoveGenericArguments(FullName) + GenericAritySuffix;
+
+    /// <summary>
+    /// 分部声明的目标标识：同一泛型类型的所有闭合实例共享同一个值。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>PageViewModel&lt;int&gt;</c> 与 <c>PageViewModel&lt;string&gt;</c> 是同一个分部声明
+    /// <c>partial class PageViewModel&lt;T&gt;</c> 的两个闭合实例，因此必须按
+    /// <see cref="DeclarationName"/>（未闭合的声明名）而不是 <see cref="Type"/>（闭合的完全限定名）判定。
+    /// </para>
+    /// <para>
+    /// 用闭合名做去重键会让两个实例各生成一份分部声明，成员重复（CS0102）；
+    /// 用 <see cref="HintName"/> 做键则会丢掉外层类型链，嵌套类型互相覆盖。
+    /// </para>
+    /// </remarks>
+    public string DeclarationKey => $"{Namespace}|{string.Join("|", ContainingTypes)}|{DeclarationName}";
 
     /// <summary>
     /// 生成的构造函数能否通过 <c>: this()</c> 链到无参构造函数。
     /// </summary>
     /// <remarks>
-    /// 没有显式构造函数时编译器会合成无参构造函数，链式调用同样成立；
-    /// 只有「声明了构造函数但没有无参版本」时才会编译失败。
+    /// <para>
+    /// 没有显式构造函数时返回 <see langword="true"/>：生成器会自己补一个无参构造函数
+    /// （见 <c>ViewSourceWriter.GetConstructor</c>），链式调用成立。
+    /// </para>
+    /// <para>
+    /// 不能依赖"编译器会合成无参构造"：分部类一旦有构造函数（包括生成器自己加的），
+    /// 编译器就不再合成，<c>: this()</c> 会找不到目标（CS7036）。
+    /// </para>
     /// </remarks>
     public bool CanChainToParameterlessConstructor => !HasAnyConstructor || HasParameterlessConstructor;
 
@@ -71,146 +109,76 @@ public readonly record struct ClassData(
     /// <param name="selfDeclaration">
     /// 最内层类型的声明文本，用于附加基类型与接口；为 null 时按类型种类生成 <c>partial class</c> 或 <c>partial record</c>。
     /// </param>
+    /// <param name="leadingAttributes">
+    /// 紧贴最内层类型声明的特性文本；为 null 时省略。特性必须落在最内层类型上，
+    /// 拼在整个块之前会被编译器绑定到外层类型。
+    /// </param>
     /// <returns>完整的 partial 类型声明。</returns>
+    public string WrapInTypeDeclarations(string body, string? selfDeclaration = null, string? leadingAttributes = null) =>
+        TypeDeclarationWriter.Write(this, body, selfDeclaration, leadingAttributes);
+
+    /// <summary>
+    /// 生成最内层类型的声明文本，保留 <c>record</c> 与 <c>static</c> 关键字。
+    /// </summary>
+    /// <param name="baseTypes">基类型与接口列表；为空时不生成冒号。</param>
+    /// <returns>形如 <c>partial record Sample : global::System.IDisposable</c> 的声明文本。</returns>
     /// <remarks>
-    /// 静态类必须保留 <c>static</c> 关键字：partial 声明的修饰符不一致时，
-    /// 编译器会报「静态类不能包含实例成员」或「部分声明冲突」。
+    /// 视图与视图模型都必须用同一段逻辑决定关键字：两处各写一遍时，
+    /// 只要有一处漏掉 <c>record</c>，编译器就会报 CS0261「部分声明必须为所有类、所有记录」。
     /// </remarks>
-    public string WrapInTypeDeclarations(string body, string? selfDeclaration = null)
+    public string SelfDeclaration(IReadOnlyList<string>? baseTypes = null)
     {
         var keyword = IsRecord ? "record" : "class";
         // 修饰符顺序必须是 `static partial class`，写成 `partial static class` 会报 CS0267。
         var modifier = IsStatic ? "static " : string.Empty;
-        var declarations = new List<string>(ContainingTypes.Count + 1);
-        declarations.AddRange(ContainingTypes);
-        declarations.Add(selfDeclaration ?? $"{modifier}partial {keyword} {Name}");
+        var declaration = $"{modifier}partial {keyword} {DeclarationName}";
 
-        var builder = new StringBuilder();
-        var indent = string.Empty;
-
-        foreach (var declaration in declarations)
-        {
-            AppendDeclaration(builder, declaration, indent);
-            builder.Append(indent).Append("{\n");
-            indent += "    ";
-        }
-
-        AppendBody(builder, body, indent);
-
-        for (var i = declarations.Count - 1; i >= 0; i--)
-        {
-            indent = indent[..^4];
-            builder.Append(indent).Append("}\n");
-        }
-
-        return builder.ToString();
+        return baseTypes is { Count: > 0 }
+            ? $"{declaration} : {string.Join(", ", baseTypes)}"
+            : declaration;
     }
 
     /// <summary>
-    /// 写入类型声明；多行声明（如带基类型列表）的续行保留相对缩进。
-    /// </summary>
-    private static void AppendDeclaration(StringBuilder builder, string declaration, string indent)
-    {
-        foreach (var line in StripCommonIndent(declaration))
-        {
-            if (line.Length == 0)
-            {
-                continue;
-            }
-
-            builder.Append(indent).Append(line).Append('\n');
-        }
-    }
-
-    /// <summary>
-    /// 写入类型体，去掉首尾空行后按当前嵌套层级缩进。
+    /// 泛型参数个数后缀；非泛型类型为空字符串。
     /// </summary>
     /// <remarks>
-    /// 生成器用原始字符串字面量拼装代码，字面量自身的缩进会残留在输出里。
-    /// 这里以非空行的最小缩进为基准剥离，既消除字面量缩进，又保留成员内部的相对缩进。
+    /// 从 <see cref="FullName"/> 的显示名统计尖括号层数不够精确（嵌套泛型会重复计数），
+    /// 因此按 <see cref="DeclarationName"/> 上的参数列表计算——它是最内层类型的声明名，
+    /// 只含自身的泛型参数。
     /// </remarks>
-    private static void AppendBody(StringBuilder builder, string body, string indent)
+    private string GenericAritySuffix
     {
-        var lines = StripCommonIndent(body);
-        var start = 0;
-        var end = lines.Length;
-
-        while (start < end && lines[start].Length == 0)
+        get
         {
-            start++;
-        }
+            var start = DeclarationName.IndexOf('<');
 
-        while (end > start && lines[end - 1].Length == 0)
-        {
-            end--;
-        }
-
-        for (var i = start; i < end; i++)
-        {
-            if (lines[i].Length == 0)
+            if (start < 0)
             {
-                builder.Append('\n');
-                continue;
+                return string.Empty;
             }
 
-            builder.Append(indent).Append(lines[i]).Append('\n');
+            var depth = 0;
+            var arity = 1;
+
+            for (var i = start; i < DeclarationName.Length; i++)
+            {
+                switch (DeclarationName[i])
+                {
+                    case '<':
+                        depth++;
+                        break;
+                    case '>':
+                        depth--;
+                        break;
+                    case ',' when depth == 1:
+                        arity++;
+                        break;
+                }
+            }
+
+            return $"`{arity}";
         }
     }
-
-    /// <summary>
-    /// 去掉各行末尾空白，并剥离所有非空行的公共缩进。
-    /// </summary>
-    private static string[] StripCommonIndent(string text)
-    {
-        var lines = SplitLines(text);
-        var commonIndent = int.MaxValue;
-
-        for (var i = 0; i < lines.Length; i++)
-        {
-            lines[i] = lines[i].TrimEnd();
-
-            if (lines[i].Length == 0)
-            {
-                continue;
-            }
-
-            commonIndent = Math.Min(commonIndent, CountLeadingSpaces(lines[i]));
-        }
-
-        if (commonIndent is 0 or int.MaxValue)
-        {
-            return lines;
-        }
-
-        for (var i = 0; i < lines.Length; i++)
-        {
-            if (lines[i].Length > commonIndent)
-            {
-                lines[i] = lines[i][commonIndent..];
-            }
-            else if (lines[i].Length > 0)
-            {
-                lines[i] = string.Empty;
-            }
-        }
-
-        return lines;
-    }
-
-    private static int CountLeadingSpaces(string line)
-    {
-        var count = 0;
-
-        while (count < line.Length && char.IsWhiteSpace(line[count]))
-        {
-            count++;
-        }
-
-        return count;
-    }
-
-    private static string[] SplitLines(string text) =>
-        text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
 
     private static string RemoveGenericArguments(string value)
     {

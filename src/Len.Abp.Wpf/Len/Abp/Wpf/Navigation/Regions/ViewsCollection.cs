@@ -79,7 +79,6 @@ internal sealed class ViewsCollection : IViewsCollection
         switch (e.Action)
         {
             case NotifyCollectionChangedAction.Add:
-                UpdateFilteredItemsList();
                 foreach (RegionMetadata itemMetadata in e.NewItems!)
                 {
                     AddMetadataMonitor(itemMetadata);
@@ -123,7 +122,6 @@ internal sealed class ViewsCollection : IViewsCollection
                 return;
             }
 
-            UpdateFilteredItemsList();
             NotifyAdd(itemMetadata.Item);
         }
         else
@@ -156,6 +154,14 @@ internal sealed class ViewsCollection : IViewsCollection
 
     private void OnCollectionChanged(NotifyCollectionChangedEventArgs e) => CollectionChanged?.Invoke(this, e);
 
+    /// <summary>
+    /// 按元数据的插入顺序重建过滤列表。
+    /// </summary>
+    /// <remarks>
+    /// 不按 <see cref="IView.ViewName"/> 排序：多视图区域（<c>ItemsControl</c>、<c>TabControl</c>）
+    /// 的显示顺序必须与导航顺序一致，否则选项卡/列表项会随视图名重排。
+    /// 单活动视图区域只取首个活动视图，顺序对它没有影响。
+    /// </remarks>
     private void UpdateFilteredItemsList() =>
-        _filteredItems = [.. _items.Where(w => _filter(w)).Select(s => s.Item).OrderBy(o => o.ViewName)];
+        _filteredItems = [.. _items.Where(w => _filter(w)).Select(s => s.Item)];
 }

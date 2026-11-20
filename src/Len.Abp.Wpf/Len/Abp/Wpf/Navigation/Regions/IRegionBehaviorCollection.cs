@@ -26,4 +26,18 @@ public interface IRegionBehaviorCollection : IEnumerable<KeyValuePair<string, IR
     /// <param name="key">行为键。</param>
     /// <returns>存在该键时返回 <see langword="true"/>。</returns>
     bool ContainsKey(string key);
+
+    /// <summary>
+    /// 查找第一个指定类型的行为。
+    /// </summary>
+    /// <typeparam name="T">行为类型。</typeparam>
+    /// <returns>匹配的行为；不存在时返回 <see langword="null"/>。</returns>
+    /// <remarks>
+    /// 供区域在不耦合具体行为键名的前提下查找可选能力，
+    /// 例如 <c>RemoveAll</c> 需要找到负责拆除的行为。
+    /// 不约束为 <see cref="IRegionBehavior"/>：可选能力可以是内部契约接口，
+    /// 由行为同时实现两者。
+    /// </remarks>
+    T? Find<T>()
+        where T : class;
 }

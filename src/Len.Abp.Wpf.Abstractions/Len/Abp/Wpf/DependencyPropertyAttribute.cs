@@ -64,7 +64,7 @@ public class DependencyPropertyAttribute(string name, Type type) : Attribute
 /// </summary>
 /// <typeparam name="T">依赖属性的类型。</typeparam>
 /// <param name="name">依赖属性的名称。</param>
-/// <exception cref="ArgumentNullException">名称为空或类型为空时抛出。</exception>
+/// <exception cref="ArgumentNullException">名称为空时抛出。</exception>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public class DependencyPropertyAttribute<T>(string name) : DependencyPropertyAttribute(name, typeof(T))
 {

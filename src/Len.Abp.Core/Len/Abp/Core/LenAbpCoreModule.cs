@@ -6,6 +6,14 @@ using Volo.Abp.Modularity;
 
 namespace Len.Abp.Core;
 
+/// <summary>
+/// 核心模块：注册枚举解析器，并初始化静态服务提供程序。
+/// </summary>
+/// <remarks>
+/// 依赖 <see cref="AbpLocalizationModule"/>：枚举名称来自 ABP 的本地化器。
+/// 使用 <see cref="EnumHelper"/> 或任何经由 <see cref="AbpServiceProvider"/> 取服务的代码，
+/// 都必须先加载本模块。
+/// </remarks>
 [DependsOn(typeof(AbpLocalizationModule))]
 public class LenAbpCoreModule : AbpModule
 {

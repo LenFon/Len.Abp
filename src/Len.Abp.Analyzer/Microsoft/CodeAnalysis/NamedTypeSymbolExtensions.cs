@@ -25,8 +25,11 @@ public static class NamedTypeSymbolExtensions
             containingType = containingType.ContainingType
         )
         {
+            // 关键字必须是三态：record struct 同时满足 IsRecord 与 Struct，
+            // 只判 IsRecord 会生成 `partial record`，与 `record struct` 冲突（CS0261）。
             var keyword = containingType switch
             {
+                { IsRecord: true, TypeKind: TypeKind.Struct } => "record struct",
                 { IsRecord: true } => "record",
                 { TypeKind: TypeKind.Struct } => "struct",
                 _ => "class",
@@ -35,17 +38,14 @@ public static class NamedTypeSymbolExtensions
             // 静态外层类同样要保留 static，且修饰符顺序必须是 `static partial`。
             var modifier = containingType.IsStatic ? "static " : string.Empty;
 
-            containingTypes.Insert(
-                0,
-                $"{modifier}partial {keyword} {containingType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)}"
-            );
+            containingTypes.Insert(0, $"{modifier}partial {keyword} {GetDeclarationName(containingType)}");
         }
 
-        var methodSymbols = classSymbol.GetMembers().OfType<IMethodSymbol>().ToArray();
-        var methods = methodSymbols
-            .Select(static value => value.ToDisplayString().Replace("?", string.Empty).TrimStart('.'))
+        var methodNames = classSymbol
+            .GetMembers()
+            .OfType<IMethodSymbol>()
+            .Select(static value => value.Name)
             .ToArray();
-        var methodNames = methodSymbols.Select(static value => value.Name).ToArray();
 
         // 编译器合成的无参构造函数不在 GetMembers 中，因此这里看到的都是显式声明。
         var constructors = classSymbol.InstanceConstructors
@@ -56,17 +56,46 @@ public static class NamedTypeSymbolExtensions
             Namespace: classSymbol.ContainingNamespace?.IsGlobalNamespace == false
                 ? classSymbol.ContainingNamespace.ToDisplayString()
                 : string.Empty,
-            Name: classSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+            // 必须用未闭合的类型参数：DeclarationName 只用于分部声明，
+            // 闭合泛型（PageViewModel<int>）与开放泛型（PageViewModel<>）都不能用于分部声明
+            // （CS1001/CS0264）。注册特性里的 typeof() 用 Type（已闭合的完全限定名），
+            // 两者不能互换。
+            DeclarationName: GetDeclarationName(classSymbol),
             SimpleName: classSymbol.Name,
             FullName: classSymbol.ToDisplayString(),
             Type: classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-            Methods: [.. methods],
             MethodNames: [.. methodNames],
             ContainingTypes: containingTypes,
             IsRecord: classSymbol.IsRecord,
             HasAnyConstructor: constructors.Length > 0,
             HasParameterlessConstructor: constructors.Any(static constructor => constructor.Parameters.Length == 0),
-            IsStatic: classSymbol.IsStatic
+            IsStatic: classSymbol.IsStatic,
+            // 密封类不能声明新的保护成员（CS0628）。生成器据此把 protected 降级为 public。
+            IsSealed: classSymbol.IsSealed
         );
+    }
+
+    /// <summary>
+    /// 取类型在 partial 声明中使用的名称，泛型类型带未闭合的类型参数列表。
+    /// </summary>
+    /// <param name="type">待取名的类型。</param>
+    /// <returns>形如 <c>Host</c> 或 <c>Host&lt;T&gt;</c> 的名称。</returns>
+    /// <remarks>
+    /// 不能直接用 <see cref="ISymbol.Name"/>：闭合泛型（<c>Host&lt;int&gt;</c>）的
+    /// <c>Name</c> 只有 <c>Host</c>，类型参数会丢失，生成的 partial 声明无法与
+    /// 用户声明匹配（CS0264）。也不能用显示名：它给出闭合实参 <c>Host&lt;int&gt;</c>，
+    /// 而 partial 声明只能用未闭合的类型参数（CS1001）。
+    /// 因此从 <see cref="INamedTypeSymbol.OriginalDefinition"/> 取参数名。
+    /// </remarks>
+    private static string GetDeclarationName(INamedTypeSymbol type)
+    {
+        var definition = type.OriginalDefinition;
+
+        if (definition.TypeParameters.Length == 0)
+        {
+            return definition.Name;
+        }
+
+        return $"{definition.Name}<{string.Join(", ", definition.TypeParameters.Select(parameter => parameter.Name))}>";
     }
 }

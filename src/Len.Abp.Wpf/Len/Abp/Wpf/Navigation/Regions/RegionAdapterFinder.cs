@@ -20,13 +20,6 @@ internal class RegionAdapterFinder(IAbpLazyServiceProvider abpLazyServiceProvide
             var regionAdapter = _abpLazyServiceProvider.GetKeyedService<IRegionAdapter>(currentType);
             if (regionAdapter is not null)
             {
-                // 适配器需要延迟服务提供程序来解析选项与行为；显式赋值，
-                // 这样默认 DI 容器（不执行属性注入）下也能正常工作。
-                if (regionAdapter is IRegionAdapterServiceProviderAware aware)
-                {
-                    aware.AbpLazyServiceProvider ??= _abpLazyServiceProvider;
-                }
-
                 return regionAdapter;
             }
 

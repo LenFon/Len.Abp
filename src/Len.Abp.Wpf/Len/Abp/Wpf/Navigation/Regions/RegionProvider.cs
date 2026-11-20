@@ -20,24 +20,50 @@ internal sealed class RegionProvider : IRegionProvider, ISingletonDependency
     }
 
     /// <inheritdoc/>
+    public bool Remove(IRegion region)
+    {
+        ArgumentNullException.ThrowIfNull(region);
+
+        return _regions.Remove(region);
+    }
+
+    /// <inheritdoc/>
     public IReadOnlyList<IView> RemoveOwnedRegions(IView ownerView)
     {
         ArgumentNullException.ThrowIfNull(ownerView);
 
         var owned = _regions.Where(region => ReferenceEquals(region.OwnerView, ownerView)).ToArray();
 
-        if (owned.Length == 0)
+        return owned.Length == 0 ? [] : DetachAndCollectViews(owned);
+    }
+
+    /// <inheritdoc/>
+    public IReadOnlyList<IView> Clear()
+    {
+        if (_regions.Count == 0)
         {
             return [];
         }
 
-        // 先整体摘除再收集视图：区域本身即将不可达，无需逐个 Remove，
-        // 也就不会触发内层区域的保活行为，避免拆除过程中重入。
-        foreach (var region in owned)
+        return DetachAndCollectViews([.. _regions]);
+    }
+
+    /// <summary>
+    /// 从提供程序中摘除指定区域，并返回它们承载的全部视图。
+    /// </summary>
+    /// <param name="regions">要摘除的区域。</param>
+    /// <returns>被摘除区域中的全部视图。</returns>
+    /// <remarks>
+    /// 先整体摘除再收集视图：区域本身即将不可达，无需逐个 <see cref="IRegion.Remove"/>，
+    /// 也就不会触发内层区域的保活行为，避免拆除过程中重入。
+    /// </remarks>
+    private IReadOnlyList<IView> DetachAndCollectViews(IReadOnlyList<IRegion> regions)
+    {
+        foreach (var region in regions)
         {
             _regions.Remove(region);
         }
 
-        return [.. owned.SelectMany(region => region.Views)];
+        return [.. regions.SelectMany(region => region.Views)];
     }
 }

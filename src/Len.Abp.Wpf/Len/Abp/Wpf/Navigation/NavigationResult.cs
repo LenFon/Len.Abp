@@ -29,11 +29,11 @@ internal class NavigationResult : INavigationResult
     }
 
     /// <inheritdoc/>
-    public INavigationContext Context { get; private set; }
+    public INavigationContext Context { get; }
 
     /// <inheritdoc/>
-    public Exception? Exception { get; private set; }
+    public Exception? Exception { get; }
 
     /// <inheritdoc/>
-    public bool Result { get; private set; }
+    public bool Result { get; }
 }
